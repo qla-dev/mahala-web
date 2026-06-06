@@ -4,6 +4,10 @@ type CurrentMahala = {
   id: string;
   name: string;
   level?: number | null;
+  type?: string;
+  scopeId?: string | null;
+  meta?: string | null;
+  isMainZone?: boolean;
 };
 
 export default function CurrentMahalasFilter({
@@ -93,22 +97,24 @@ export function CurrentMahalasSheet({
 
         <div className="current-mahalas-sheet-list">
           {mahalas.map((mahala, index) => {
-            const active = enabledIds.has(String(mahala.id));
+            const activeId = String(mahala.id);
+            const active = enabledIds.has(activeId);
             const level = Number(mahala.level) || 0;
-            const primary = index === 0 || level === 0;
+            const primary = Boolean(mahala.isMainZone) || index === 0;
+            const type = mahala.type || (level === 0 ? 'zone' : 'userMahala');
 
             return (
               <button
                 key={mahala.id}
-                className={`current-mahalas-sheet-row ${active ? 'active' : ''} ${primary ? 'primary' : ''}`}
+                className={`current-mahalas-sheet-row type-${type} level-${level} ${active ? 'active' : 'inactive'} ${primary ? 'primary' : ''}`}
                 type="button"
-                onClick={() => onToggle(String(mahala.id))}
+                onClick={() => onToggle(activeId)}
               >
-                <span className={`current-mahalas-sheet-accent level-${level}`} />
+                <span className={`current-mahalas-sheet-accent type-${type} level-${level}`} />
                 <span className="current-mahalas-sheet-main">
-                  <small>{level === 0 ? 'Glavna MAHALA' : level === 1 ? 'MAHALA level 1' : 'MAHALA level 2'}</small>
+                  <small>{getNodeTypeLabel(type, level)}</small>
                   <strong>{mahala.name}</strong>
-                  {!primary ? <em>u sklopu trenutne lokacije</em> : null}
+                  {mahala.meta ? <em>{mahala.meta}</em> : null}
                 </span>
                 <span className={`current-mahalas-sheet-action ${active ? 'active' : ''}`}>
                   {active ? <Check size={14} /> : <Activity size={14} />}
@@ -130,4 +136,16 @@ export function CurrentMahalasSheet({
       </section>
     </div>
   );
+}
+
+function getNodeTypeLabel(type: string, level: number) {
+  if (type === 'sarajevoArena') {
+    return 'PodMAHALA';
+  }
+
+  if (type === 'userMahala') {
+    return level === 1 ? 'MAHALA level 1' : 'MAHALA level 2';
+  }
+
+  return 'Glavna MAHALA';
 }

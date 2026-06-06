@@ -54,6 +54,12 @@ type Zone = {
   id: string;
   name: string;
   level?: number | null;
+  type?: string;
+  sourceId?: string | null;
+  officialId?: string | null;
+  scopeId?: string | null;
+  meta?: string | null;
+  isMainZone?: boolean;
   center?: Coordinate | null;
   coordinates: Coordinate[];
   holes?: Coordinate[][];
@@ -106,6 +112,11 @@ const storeLinks = {
   ios: 'https://apps.apple.com/',
   android: 'https://play.google.com/store',
 };
+const SARAJEVO_MAHALA_ZONE = {
+  id: 'mahala-sarajevo',
+  name: 'Sarajevo',
+};
+const SARAJEVO_TOPIC_SCOPE_ID = 'sarajevo-71000';
 
 function isSafariBrowser() {
   const userAgent = window.navigator.userAgent;
@@ -284,6 +295,7 @@ function normalizeZone(value: unknown): Zone | null {
     id: String(zone.id),
     name: String(zone.name),
     level: Number(zone.level) || 2,
+    officialId: zone.officialId ? String(zone.officialId) : undefined,
     center: normalizeCoordinate(zone.center),
     coordinates,
     holes: Array.isArray(zone.holes)
@@ -360,18 +372,100 @@ function pointInPolygon(point: Coordinate, polygon: Coordinate[], holes: Coordin
 }
 
 function getCurrentMahalas(coordinate: Coordinate, sarajevoZones: Zone[], userZones: Zone[]) {
-  const sarajevoMatches = sarajevoZones
-    .filter((zone) => pointInPolygon(coordinate, zone.coordinates, zone.holes || []))
-    .map((zone) => ({ ...zone, level: 0 }));
+  const activeSarajevoArena = getSarajevoArenaForCoordinate(coordinate, sarajevoZones);
   const userMatches = userZones
-    .filter((zone) => pointInPolygon(coordinate, zone.coordinates, zone.holes || []));
+    .filter((zone) =>
+      pointInPolygon(coordinate, zone.coordinates, zone.holes || []) ||
+      (activeSarajevoArena && String(zone.id) === SARAJEVO_TOPIC_SCOPE_ID),
+    )
+    .sort((left, right) => {
+      const leftLevel = Number(left.level) === 1 ? 1 : 2;
+      const rightLevel = Number(right.level) === 1 ? 1 : 2;
 
-  return [...sarajevoMatches, ...userMatches];
+      if (leftLevel !== rightLevel) {
+        return leftLevel - rightLevel;
+      }
+
+      return String(left.name).localeCompare(String(right.name));
+    })
+    .map((zone) => ({
+      ...zone,
+      type: 'userMahala',
+      level: Number(zone.level) === 1 ? 1 : 2,
+      scopeId: zone.officialId || zone.id,
+      meta: `u sklopu ${activeSarajevoArena?.name || SARAJEVO_MAHALA_ZONE.name}`,
+      isMainZone: false,
+    }));
+
+  const nodes: Zone[] = [];
+
+  if (activeSarajevoArena) {
+    nodes.push({
+      ...activeSarajevoArena,
+      id: SARAJEVO_MAHALA_ZONE.id,
+      name: SARAJEVO_MAHALA_ZONE.name,
+      type: 'zone',
+      level: 0,
+      scopeId: SARAJEVO_TOPIC_SCOPE_ID,
+      meta: null,
+      isMainZone: true,
+    });
+
+    nodes.push({
+      ...activeSarajevoArena,
+      id: `sarajevo-arena:${activeSarajevoArena.id || activeSarajevoArena.name}`,
+      name: getSarajevoArenaName(activeSarajevoArena.name),
+      sourceId: activeSarajevoArena.id || null,
+      type: 'sarajevoArena',
+      level: 0,
+      scopeId: activeSarajevoArena.id || activeSarajevoArena.officialId || null,
+      meta: `u sklopu ${SARAJEVO_MAHALA_ZONE.name}`,
+      isMainZone: false,
+    });
+  }
+
+  return [...nodes, ...userMatches];
+}
+
+function getSarajevoArenaName(name: string) {
+  if (name === 'Stari Grad Sarajevo') {
+    return 'Stari Grad';
+  }
+
+  if (name === 'Centar Sarajevo') {
+    return 'Centar';
+  }
+
+  if (name === 'Novi Grad Sarajevo') {
+    return 'Novi Grad';
+  }
+
+  return name;
+}
+
+function getSarajevoArenaForCoordinate(coordinate: Coordinate, sarajevoZones: Zone[]) {
+  return sarajevoZones.find((zone) => pointInPolygon(coordinate, zone.coordinates, zone.holes || [])) || null;
+}
+
+function getMahalaApiScopeId(zone: Zone) {
+  if (zone.id === SARAJEVO_MAHALA_ZONE.id) {
+    return SARAJEVO_TOPIC_SCOPE_ID;
+  }
+
+  if (zone.scopeId) {
+    return zone.scopeId;
+  }
+
+  if (zone.type === 'sarajevoArena') {
+    return zone.sourceId || zone.officialId || String(zone.id).replace('sarajevo-arena:', '');
+  }
+
+  return zone.officialId || zone.id;
 }
 
 function getNearbyMahalaIds(coordinate: Coordinate, sarajevoZones: Zone[], userZones: Zone[]) {
   const matchingIds = getCurrentMahalas(coordinate, sarajevoZones, userZones)
-    .map((zone) => String(zone.id));
+    .map((zone) => String(getMahalaApiScopeId(zone)));
 
   return matchingIds.length ? matchingIds.slice(0, 10) : DEFAULT_PUBLIC_MAHALA_IDS;
 }
@@ -1043,6 +1137,7 @@ export default function App() {
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
   const [userCoordinate, setUserCoordinate] = useState<Coordinate | null>(null);
+  const [lastLocatedCoordinate, setLastLocatedCoordinate] = useState<Coordinate | null>(null);
   const [currentMahalas, setCurrentMahalas] = useState<Zone[]>([]);
   const [enabledMahalaIds, setEnabledMahalaIds] = useState<Set<string>>(() => new Set());
   const [currentMahalasSheetOpen, setCurrentMahalasSheetOpen] = useState(false);
@@ -1107,7 +1202,7 @@ export default function App() {
   const loadFeedForMahalaIds = useCallback(async (feedMahalaIds: string[], sort: FeedSort = feedSort) => {
     const requestId = feedRequestIdRef.current + 1;
     feedRequestIdRef.current = requestId;
-    const resolvedIds = feedMahalaIds.length ? feedMahalaIds : DEFAULT_PUBLIC_MAHALA_IDS;
+    const resolvedIds = [...new Set(feedMahalaIds.length ? feedMahalaIds : DEFAULT_PUBLIC_MAHALA_IDS)];
 
     const [postsResult, topicsResult] = await Promise.allSettled([
       fetch(endpoints.feedForCurrentMahalas(resolvedIds, { limit: 14, sort }), {
@@ -1181,6 +1276,7 @@ export default function App() {
       const nextCurrentMahalas = getCurrentMahalas(coordinate, sarajevoZones, zones);
       const currentZone = nextCurrentMahalas.find((zone) => Number(zone.level) > 0) || nextCurrentMahalas[0];
       setUserCoordinate(coordinate);
+      setLastLocatedCoordinate(coordinate);
       setCurrentMahalas(nextCurrentMahalas);
       setEnabledMahalaIds(new Set(nextCurrentMahalas.map((zone) => String(zone.id))));
       setCurrentMahalasSheetOpen(nextCurrentMahalas.length > 0);
@@ -1189,7 +1285,7 @@ export default function App() {
         setSelectedZone(currentZone);
       }
       setLocationStatus('granted');
-      void loadFeedForMahalaIds(nextCurrentMahalas.map((zone) => String(zone.id)), feedSort);
+      void loadFeedForMahalaIds(nextCurrentMahalas.map((zone) => String(getMahalaApiScopeId(zone))), feedSort);
     };
 
     const handleError = (error: GeolocationPositionError) => {
@@ -1222,8 +1318,8 @@ export default function App() {
       }
 
       const enabledIds = currentMahalas
-        .map((zone) => String(zone.id))
-        .filter((mahalaId) => next.has(mahalaId));
+        .filter((zone) => next.has(String(zone.id)))
+        .map((zone) => String(getMahalaApiScopeId(zone)));
       void loadFeedForMahalaIds(enabledIds, feedSort);
 
       return next;
@@ -1233,8 +1329,8 @@ export default function App() {
   const changeFeedSort = useCallback((nextSort: FeedSort) => {
     setFeedSort(nextSort);
     const enabledIds = currentMahalas
-      .map((zone) => String(zone.id))
-      .filter((mahalaId) => enabledMahalaIds.has(mahalaId));
+      .filter((zone) => enabledMahalaIds.has(String(zone.id)))
+      .map((zone) => String(getMahalaApiScopeId(zone)));
     void loadFeedForMahalaIds(enabledIds.length ? enabledIds : DEFAULT_PUBLIC_MAHALA_IDS, nextSort);
   }, [currentMahalas, enabledMahalaIds, loadFeedForMahalaIds]);
 
@@ -1259,6 +1355,33 @@ export default function App() {
     const timeout = window.setTimeout(requestLocation, 450);
     return () => window.clearTimeout(timeout);
   }, [locationStatus, requestLocation, sarajevoZones.length]);
+
+  useEffect(() => {
+    if (!lastLocatedCoordinate) {
+      return;
+    }
+
+    const nextCurrentMahalas = getCurrentMahalas(lastLocatedCoordinate, sarajevoZones, zones);
+    const currentZone = nextCurrentMahalas.find((zone) => Number(zone.level) > 0) || nextCurrentMahalas[1] || nextCurrentMahalas[0];
+    setCurrentMahalas(nextCurrentMahalas);
+    setEnabledMahalaIds((current) => {
+      if (current.size > 0) {
+        const nextIds = new Set(nextCurrentMahalas.map((zone) => String(zone.id)));
+        const merged = new Set<string>();
+        nextIds.forEach((id) => {
+          if (current.has(id)) {
+            merged.add(id);
+          }
+        });
+        return merged.size ? merged : nextIds;
+      }
+
+      return new Set(nextCurrentMahalas.map((zone) => String(zone.id)));
+    });
+    if (currentZone) {
+      setSelectedZone(currentZone);
+    }
+  }, [lastLocatedCoordinate, sarajevoZones, zones]);
 
   const visiblePosts = useMemo(
     () => {
