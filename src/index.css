@@ -300,8 +300,11 @@ button {
   flex-shrink: 0;
   gap: 8px;
   overflow-x: auto;
+  scroll-padding-inline: 18px;
+  scroll-snap-type: x mandatory;
   padding: 0 18px 14px;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 .feed-tabs::-webkit-scrollbar,
@@ -313,15 +316,17 @@ button {
 
 .feed-tabs button {
   display: inline-flex;
-  min-height: 38px;
+  min-height: 36px;
   flex-shrink: 0;
   align-items: center;
-  gap: 8px;
-  border-radius: 999px;
-  background: var(--panel-soft);
-  color: var(--muted);
-  padding: 0 13px;
-  font-weight: 900;
+  justify-content: center;
+  scroll-snap-align: start;
+  border-radius: 12px;
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 850;
 }
 
 .feed-tabs button small {
@@ -330,8 +335,8 @@ button {
 }
 
 .feed-tabs button.active {
-  background: var(--accent);
-  color: white;
+  background: var(--text);
+  color: #111827;
 }
 
 .post-list {
@@ -435,6 +440,198 @@ button {
   font-size: 10px;
   font-weight: 850;
   opacity: 0.72;
+}
+
+.current-mahalas-sheet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.58);
+  padding: 86px 18px 18px;
+}
+
+.current-mahalas-sheet {
+  position: relative;
+  z-index: 10001;
+  width: min(620px, 100%);
+  max-height: min(720px, calc(100vh - 104px));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-top-width: 0;
+  border-radius: 0 0 30px 30px;
+  background: var(--panel);
+  padding: 16px 20px 0;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.5);
+}
+
+.current-mahalas-sheet-handle {
+  width: 54px;
+  height: 5px;
+  margin: 0 auto 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.current-mahalas-sheet-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.current-mahalas-sheet-header h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1.18;
+  font-weight: 950;
+}
+
+.current-mahalas-sheet-header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 750;
+}
+
+.current-mahalas-sheet-close {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.current-mahalas-sheet-list {
+  display: grid;
+  max-height: min(430px, 48vh);
+  gap: 10px;
+  overflow-y: auto;
+  padding-bottom: 12px;
+  scrollbar-width: none;
+}
+
+.current-mahalas-sheet-list::-webkit-scrollbar {
+  display: none;
+}
+
+.current-mahalas-sheet-row {
+  display: grid;
+  min-height: 74px;
+  grid-template-columns: 5px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text);
+  padding: 12px;
+  text-align: left;
+}
+
+.current-mahalas-sheet-row.primary.active {
+  border-color: rgba(139, 92, 246, 0.52);
+  background: rgba(139, 92, 246, 0.16);
+}
+
+.current-mahalas-sheet-row:active {
+  transform: scale(0.99);
+}
+
+.current-mahalas-sheet-accent {
+  width: 5px;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(139, 92, 246, 1);
+}
+
+.current-mahalas-sheet-accent.level-1 {
+  background: rgba(24, 120, 67, 1);
+}
+
+.current-mahalas-sheet-accent.level-2 {
+  background: rgba(245, 158, 11, 1);
+}
+
+.current-mahalas-sheet-main {
+  min-width: 0;
+}
+
+.current-mahalas-sheet-main small,
+.current-mahalas-sheet-main em {
+  display: block;
+  color: var(--muted);
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.current-mahalas-sheet-main strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.2;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.current-mahalas-sheet-row.primary .current-mahalas-sheet-main strong {
+  font-size: 20px;
+}
+
+.current-mahalas-sheet-action {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.current-mahalas-sheet-action.active {
+  background: var(--accent);
+}
+
+.current-mahalas-sheet-footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0 -20px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  padding: 20px;
+}
+
+.current-mahalas-sheet-footer button {
+  min-height: 56px;
+  border-radius: 18px;
+  background: var(--accent);
+  color: var(--text);
+  padding: 0 10px;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.current-mahalas-sheet-footer button.secondary {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .feed-empty-state {
@@ -786,6 +983,20 @@ button {
   backdrop-filter: blur(12px);
 }
 
+.map-badge span {
+  display: grid;
+  gap: 2px;
+  line-height: 1.1;
+}
+
+.map-badge small {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .mahala-user-marker {
   border: 0;
   background: transparent;
@@ -817,6 +1028,61 @@ button {
 .topics-panel,
 .mobile-app-card {
   padding: 18px;
+}
+
+.download-screen {
+  display: flex;
+  min-height: calc(100vh - 172px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.download-screen-icon {
+  display: inline-flex;
+  width: 78px;
+  height: 78px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(139, 92, 246, 0.38);
+  border-radius: 24px;
+  background:
+    linear-gradient(145deg, rgba(139, 92, 246, 0.32), rgba(16, 185, 129, 0.16)),
+    rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  box-shadow: 0 24px 70px rgba(124, 58, 237, 0.28);
+}
+
+.download-screen p {
+  max-width: 330px;
+  margin: 0;
+  color: #d4d4d8;
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 750;
+}
+
+.download-screen-highlights {
+  display: flex;
+  max-width: 360px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.download-screen-highlights span {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text);
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 900;
 }
 
 .promo-card {
@@ -1170,6 +1436,23 @@ button {
     border-radius: 0;
   }
 
+  .current-mahalas-sheet-layer {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .current-mahalas-sheet {
+    width: 100%;
+    max-height: min(82vh, 720px);
+    border-top-width: 1px;
+    border-bottom-width: 0;
+    border-radius: 30px 30px 0 0;
+  }
+
+  .current-mahalas-sheet-list {
+    max-height: 46vh;
+  }
+
   .panel-title h1 {
     font-size: 24px;
   }
@@ -1184,32 +1467,33 @@ button {
     bottom: 0;
     z-index: 80;
     display: grid;
-    min-height: 68px;
+    min-height: 74px;
     grid-template-columns: repeat(4, 1fr);
     gap: 6px;
     border-top: 1px solid var(--border);
     background: rgba(5, 5, 8, 0.92);
-    padding: 6px 8px calc(env(safe-area-inset-bottom) + 7px);
+    padding: 8px 8px calc(env(safe-area-inset-bottom) + 10px);
     backdrop-filter: blur(18px);
   }
 
   .mobile-bottom-nav button {
     display: flex;
     min-width: 0;
+    min-height: 52px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 4px;
     border-radius: 14px;
     background: transparent;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.72);
     font-size: 10px;
     font-weight: 950;
   }
 
   .mobile-bottom-nav button.active {
-    background: var(--accent);
-    color: white;
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--accent);
   }
 
   .mobile-app-card {

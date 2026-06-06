@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   MapContainer,
-  Marker,
   Polygon,
   TileLayer,
   Tooltip,
@@ -12,7 +11,6 @@ import L from 'leaflet';
 import lottie from 'lottie-web';
 import 'leaflet/dist/leaflet.css';
 import {
-  AppWindow,
   Bell,
   ChevronDown,
   ChevronLeft,
@@ -28,11 +26,11 @@ import {
   Navigation,
   Search,
   Shield,
+  Smartphone,
   Sparkles,
-  UserRound,
 } from 'lucide-react';
 import endpoints from './api/endpoints';
-import CurrentMahalasFilter from './components/CurrentMahalasFilter';
+import { CurrentMahalasSheet } from './components/CurrentMahalasFilter';
 import PublicPostCard from './components/PublicPostCard';
 import PublicTopicsPanel from './components/PublicTopicsPanel';
 import mahalaJumpLogo from './assets/mahalaJumpLogo.json';
@@ -112,14 +110,6 @@ const storeLinks = {
 function isSafariBrowser() {
   const userAgent = window.navigator.userAgent;
   return /Safari/i.test(userAgent) && !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|Android/i.test(userAgent);
-}
-
-function isFiniteCoordinate(coordinate: Coordinate | null): coordinate is Coordinate {
-  return Boolean(
-    coordinate &&
-      Number.isFinite(coordinate.latitude) &&
-      Number.isFinite(coordinate.longitude),
-  );
 }
 
 const fallbackTopics: Topic[] = [
@@ -468,7 +458,11 @@ function UserLottieMarker({ coordinate }: { coordinate: Coordinate | null }) {
   const animationRef = useRef<ReturnType<typeof lottie.loadAnimation> | null>(null);
 
   useEffect(() => {
-    if (!isFiniteCoordinate(coordinate)) {
+    if (
+      !coordinate ||
+      !Number.isFinite(coordinate.latitude) ||
+      !Number.isFinite(coordinate.longitude)
+    ) {
       markerRef.current?.remove();
       markerRef.current = null;
       animationRef.current?.destroy();
@@ -476,16 +470,13 @@ function UserLottieMarker({ coordinate }: { coordinate: Coordinate | null }) {
       return undefined;
     }
 
-    const safari = isSafariBrowser();
     const position = L.latLng(coordinate.latitude, coordinate.longitude);
 
     try {
       if (!markerRef.current) {
         const icon = L.divIcon({
           className: 'mahala-user-marker',
-          html: safari
-            ? '<div class="mahala-user-marker-dot"></div>'
-            : '<div class="mahala-user-marker-inner"></div>',
+          html: '<div class="mahala-user-marker-inner"></div>',
           iconAnchor: [34, 58],
           iconSize: [68, 68],
         });
@@ -494,11 +485,7 @@ function UserLottieMarker({ coordinate }: { coordinate: Coordinate | null }) {
         markerRef.current.setLatLng(position);
       }
 
-      if (safari) {
-        map.setView(position, Math.max(map.getZoom(), 14), { animate: false });
-      } else {
-        map.flyTo(position, Math.max(map.getZoom(), 14), { animate: true, duration: 0.75 });
-      }
+      map.setView(position, Math.max(map.getZoom(), 14), { animate: false });
     } catch {
       markerRef.current?.remove();
       markerRef.current = null;
@@ -508,7 +495,7 @@ function UserLottieMarker({ coordinate }: { coordinate: Coordinate | null }) {
     const markerElement = markerRef.current.getElement();
     const lottieContainer = markerElement?.querySelector('.mahala-user-marker-inner') as HTMLDivElement | null;
 
-    if (lottieContainer && !animationRef.current && !safari) {
+    if (lottieContainer && !animationRef.current) {
       try {
         animationRef.current = lottie.loadAnimation({
           animationData: mahalaJumpLogo,
@@ -553,11 +540,13 @@ function Header({
   onPage,
   selectedZone,
   locationStatus,
+  onLocationPress,
 }: {
   page: Page;
   onPage: (page: Page) => void;
   selectedZone: Zone | null;
   locationStatus: LocationStatus;
+  onLocationPress: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const locationLabel = (() => {
@@ -587,7 +576,7 @@ function Header({
         <img src="/mahala.svg" alt="MAHALA" />
         <span>MAHALA</span>
       </button>
-      <button className="header-location-control" type="button">
+      <button className="header-location-control" type="button" onClick={onLocationPress}>
         <Navigation size={15} />
         <span>{locationLabel}</span>
         <ChevronDown size={16} />
@@ -626,26 +615,25 @@ function Header({
   );
 }
 
-function FeedTabs({
-  topics,
-  activeTopic,
-  onTopic,
+function FeedSortTabs({
+  activeSort,
+  onSort,
 }: {
-  topics: Topic[];
-  activeTopic: string;
-  onTopic: (id: string) => void;
+  activeSort: FeedSort;
+  onSort: (sort: FeedSort) => void;
 }) {
   return (
-    <div className="feed-tabs">
-      {topics.map((topic) => (
+    <div className="feed-tabs" role="tablist" aria-label="Sortiranje objava">
+      {FEED_SORT_TABS.map((tab) => (
         <button
-          key={topic.id}
-          className={activeTopic === topic.id ? 'active' : ''}
+          key={tab.id}
+          className={activeSort === tab.id ? 'active' : ''}
           type="button"
-          onClick={() => onTopic(topic.id)}
+          role="tab"
+          aria-selected={activeSort === tab.id}
+          onClick={() => onSort(tab.id)}
         >
-          <span>{topic.name}</span>
-          <small>{topic.count}</small>
+          <span>{tab.label}</span>
         </button>
       ))}
     </div>
@@ -732,28 +720,26 @@ function FeedPanel({
   topics,
   activeTopic,
   onTopic,
+  activeSort,
+  onSort,
   posts,
   selectedPost,
   onPost,
   locationStatus,
   onLocate,
   onOpenLocationSettings,
-  currentMahalas,
-  enabledMahalaIds,
-  onToggleMahala,
 }: {
   topics: Topic[];
   activeTopic: string;
   onTopic: (id: string) => void;
+  activeSort: FeedSort;
+  onSort: (sort: FeedSort) => void;
   posts: Post[];
   selectedPost: Post | null;
   onPost: (post: Post) => void;
   locationStatus: LocationStatus;
   onLocate: () => void;
   onOpenLocationSettings: () => void;
-  currentMahalas: Zone[];
-  enabledMahalaIds: Set<string>;
-  onToggleMahala: (id: string) => void;
 }) {
   const needsLocation = locationStatus !== 'granted';
   const locationCopy = (() => {
@@ -810,12 +796,7 @@ function FeedPanel({
         </div>
       ) : (
         <>
-          <CurrentMahalasFilter
-            mahalas={currentMahalas}
-            enabledIds={enabledMahalaIds}
-            onToggle={onToggleMahala}
-          />
-          <FeedTabs topics={topics} activeTopic={activeTopic} onTopic={onTopic} />
+          <FeedSortTabs activeSort={activeSort} onSort={onSort} />
           {posts.length === 0 ? (
             <div className="feed-empty-state compact">
               <LottieBox className="feed-empty-lottie" />
@@ -952,15 +933,15 @@ function MahalaMap({
             </Polygon>
           );
         })}
-        {selectedZone?.center ? (
-          <Marker position={[selectedZone.center.latitude, selectedZone.center.longitude]} />
-        ) : null}
         <UserLottieMarker coordinate={userCoordinate} />
         <FitZone zone={selectedZone} />
       </MapContainer>
       <div className="map-badge">
         <Compass size={16} />
-        Interaktivna mapa mahala
+        <span>
+          {selectedZone?.name || 'Interaktivna mapa mahala'}
+          {selectedZone?.name ? <small>Odabrana MAHALA</small> : null}
+        </span>
       </div>
     </div>
   );
@@ -1031,7 +1012,7 @@ function BottomNav({
     { id: 'feed', label: 'Feed', icon: <Home size={19} /> },
     { id: 'topics', label: 'Teme', icon: <Search size={19} /> },
     { id: 'map', label: 'Mapa', icon: <MapPin size={19} /> },
-    { id: 'profile', label: 'App', icon: <UserRound size={19} /> },
+    { id: 'profile', label: 'Preuzmi', icon: <Download size={19} /> },
   ];
 
   return (
@@ -1048,7 +1029,7 @@ function BottomNav({
 
 export default function App() {
   const [page, setPage] = useState<Page>(() => getPageFromPath());
-  const [mobileView, setMobileView] = useState<MobileView>('feed');
+  const [mobileView, setMobileView] = useState<MobileView>('map');
   const [zones, setZones] = useState<Zone[]>([]);
   const sarajevoZones = useMemo(
     () => (SARAJEVO_POLYGONS as Zone[]).map((zone) => ({ ...zone, level: 0 })),
@@ -1057,12 +1038,14 @@ export default function App() {
   const [topics, setTopics] = useState<Topic[]>(fallbackTopics);
   const [posts, setPosts] = useState<Post[]>([]);
   const [activeTopic, setActiveTopic] = useState('sve');
+  const [feedSort, setFeedSort] = useState<FeedSort>('recent');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
   const [userCoordinate, setUserCoordinate] = useState<Coordinate | null>(null);
   const [currentMahalas, setCurrentMahalas] = useState<Zone[]>([]);
   const [enabledMahalaIds, setEnabledMahalaIds] = useState<Set<string>>(() => new Set());
+  const [currentMahalasSheetOpen, setCurrentMahalasSheetOpen] = useState(false);
   const feedRequestIdRef = useRef(0);
   const locationRequestIdRef = useRef(0);
   const mapZones = useMemo(() => [...sarajevoZones, ...zones], [sarajevoZones, zones]);
@@ -1121,13 +1104,13 @@ export default function App() {
     };
   }, []);
 
-  const loadFeedForMahalaIds = useCallback(async (feedMahalaIds: string[]) => {
+  const loadFeedForMahalaIds = useCallback(async (feedMahalaIds: string[], sort: FeedSort = feedSort) => {
     const requestId = feedRequestIdRef.current + 1;
     feedRequestIdRef.current = requestId;
     const resolvedIds = feedMahalaIds.length ? feedMahalaIds : DEFAULT_PUBLIC_MAHALA_IDS;
 
     const [postsResult, topicsResult] = await Promise.allSettled([
-      fetch(endpoints.feedForCurrentMahalas(resolvedIds, { limit: 14, sort: 'recent' }), {
+      fetch(endpoints.feedForCurrentMahalas(resolvedIds, { limit: 14, sort }), {
         headers: { Accept: 'application/json' },
       }).then((response) => response.json()),
       fetch(endpoints.topicsForCurrentMahalas(resolvedIds), {
@@ -1164,16 +1147,11 @@ export default function App() {
       setTopics(mergeTopicsWithGeneric(nextTopics));
       setActiveTopic('sve');
     }
-  }, []);
+  }, [feedSort]);
 
   useEffect(() => {
-    void loadFeedForMahalaIds(DEFAULT_PUBLIC_MAHALA_IDS);
+    void loadFeedForMahalaIds(DEFAULT_PUBLIC_MAHALA_IDS, feedSort);
   }, [loadFeedForMahalaIds]);
-
-  const loadFeedForLocation = useCallback(async (coordinate: Coordinate) => {
-    const feedMahalaIds = getNearbyMahalaIds(coordinate, sarajevoZones, zones);
-    await loadFeedForMahalaIds(feedMahalaIds);
-  }, [loadFeedForMahalaIds, sarajevoZones, zones]);
 
   const requestLocation = useCallback(() => {
     const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
@@ -1205,11 +1183,13 @@ export default function App() {
       setUserCoordinate(coordinate);
       setCurrentMahalas(nextCurrentMahalas);
       setEnabledMahalaIds(new Set(nextCurrentMahalas.map((zone) => String(zone.id))));
+      setCurrentMahalasSheetOpen(nextCurrentMahalas.length > 0);
+      setMobileView('map');
       if (currentZone) {
         setSelectedZone(currentZone);
       }
       setLocationStatus('granted');
-      void loadFeedForMahalaIds(nextCurrentMahalas.map((zone) => String(zone.id)));
+      void loadFeedForMahalaIds(nextCurrentMahalas.map((zone) => String(zone.id)), feedSort);
     };
 
     const handleError = (error: GeolocationPositionError) => {
@@ -1229,7 +1209,7 @@ export default function App() {
     } catch {
       setLocationStatus('error');
     }
-  }, [loadFeedForMahalaIds, sarajevoZones, zones]);
+  }, [feedSort, loadFeedForMahalaIds, sarajevoZones, zones]);
 
   const toggleCurrentMahala = useCallback((id: string) => {
     setEnabledMahalaIds((current) => {
@@ -1244,11 +1224,19 @@ export default function App() {
       const enabledIds = currentMahalas
         .map((zone) => String(zone.id))
         .filter((mahalaId) => next.has(mahalaId));
-      void loadFeedForMahalaIds(enabledIds);
+      void loadFeedForMahalaIds(enabledIds, feedSort);
 
       return next;
     });
-  }, [currentMahalas, loadFeedForMahalaIds]);
+  }, [currentMahalas, feedSort, loadFeedForMahalaIds]);
+
+  const changeFeedSort = useCallback((nextSort: FeedSort) => {
+    setFeedSort(nextSort);
+    const enabledIds = currentMahalas
+      .map((zone) => String(zone.id))
+      .filter((mahalaId) => enabledMahalaIds.has(mahalaId));
+    void loadFeedForMahalaIds(enabledIds.length ? enabledIds : DEFAULT_PUBLIC_MAHALA_IDS, nextSort);
+  }, [currentMahalas, enabledMahalaIds, loadFeedForMahalaIds]);
 
   const openLocationSettings = useCallback(() => {
     const candidates = [
@@ -1296,6 +1284,15 @@ export default function App() {
     }
   }, [mapZones, selectedZone]);
 
+  const handleLocationPress = useCallback(() => {
+    if (locationStatus === 'granted' && currentMahalas.length > 0) {
+      setCurrentMahalasSheetOpen(true);
+      return;
+    }
+
+    requestLocation();
+  }, [currentMahalas.length, locationStatus, requestLocation]);
+
   const appBody = selectedPost ? (
     <PostDetail post={selectedPost} onBack={() => setSelectedPost(null)} />
   ) : (
@@ -1306,22 +1303,21 @@ export default function App() {
         setActiveTopic(topic);
         setMobileView('feed');
       }}
+      activeSort={feedSort}
+      onSort={changeFeedSort}
       posts={visiblePosts}
       selectedPost={selectedPost}
       onPost={(post) => setSelectedPost(post)}
       locationStatus={locationStatus}
       onLocate={requestLocation}
       onOpenLocationSettings={openLocationSettings}
-      currentMahalas={currentMahalas}
-      enabledMahalaIds={enabledMahalaIds}
-      onToggleMahala={toggleCurrentMahala}
     />
   );
 
   if (page !== 'app') {
     return (
       <div className="app-shell legal-shell">
-        <Header page={page} onPage={navigateToPage} selectedZone={selectedZone} locationStatus={locationStatus} />
+        <Header page={page} onPage={navigateToPage} selectedZone={selectedZone} locationStatus={locationStatus} onLocationPress={handleLocationPress} />
         <LegalPage page={page} onBack={() => navigateToPage('app')} />
       </div>
     );
@@ -1329,7 +1325,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Header page={page} onPage={navigateToPage} selectedZone={selectedZone} locationStatus={locationStatus} />
+      <Header page={page} onPage={navigateToPage} selectedZone={selectedZone} locationStatus={locationStatus} onLocationPress={handleLocationPress} />
       <main className="desktop-layout">
         <div className="desktop-left">
           {appBody}
@@ -1339,6 +1335,21 @@ export default function App() {
           <PublicTopicsPanel topics={topics} activeTopic={activeTopic} onTopic={setActiveTopic} />
         </aside>
       </main>
+      <CurrentMahalasSheet
+        open={currentMahalasSheetOpen}
+        mahalas={currentMahalas}
+        enabledIds={enabledMahalaIds}
+        onToggle={toggleCurrentMahala}
+        onOpenFeed={() => {
+          setCurrentMahalasSheetOpen(false);
+          setMobileView('feed');
+        }}
+        onOpenTopics={() => {
+          setCurrentMahalasSheetOpen(false);
+          setMobileView('topics');
+        }}
+        onClose={() => setCurrentMahalasSheetOpen(false)}
+      />
 
       <main className="mobile-layout">
         <div className="mobile-scroll">
@@ -1346,10 +1357,17 @@ export default function App() {
           {mobileView === 'map' ? <MahalaMap zones={mapZones} selectedZone={selectedZone} userCoordinate={userCoordinate} onZone={setSelectedZone} /> : null}
           {mobileView === 'topics' ? <PublicTopicsPanel topics={topics} activeTopic={activeTopic} onTopic={(topic) => { setActiveTopic(topic); setMobileView('feed'); }} /> : null}
           {mobileView === 'profile' ? (
-            <section className="mobile-app-card">
-              <AppWindow size={28} />
+            <section className="mobile-app-card download-screen">
+              <span className="download-screen-icon">
+                <Smartphone size={34} />
+              </span>
               <h1>MAHALA aplikacija</h1>
-              <p>Web je samo za citanje i navigaciju. Pisanje objava, glasanje, notifikacije i Pro opcije su u native aplikaciji.</p>
+              <p>Preuzmi native aplikaciju za objave, glasanje, notifikacije, Pro teme i punu MAHALA mapu.</p>
+              <div className="download-screen-highlights">
+                <span>Lokacija uzivo</span>
+                <span>Teme iz mahale</span>
+                <span>Brze notifikacije</span>
+              </div>
               <StoreButtons />
             </section>
           ) : null}
