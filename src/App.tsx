@@ -18,7 +18,8 @@ import {
   Download,
   Heart,
   Home,
-  MapPin,
+  Apple,
+  Map,
   Menu,
   MessageCircle,
   Moon,
@@ -28,6 +29,8 @@ import {
   Shield,
   Sparkles,
   Sun,
+  Play,
+  X,
 } from 'lucide-react';
 import endpoints from './api/endpoints';
 import { CurrentMahalasSheet } from './components/CurrentMahalasFilter';
@@ -113,6 +116,11 @@ const SARAJEVO_POLYGON_SCOPE_IDS = new Set([
 const SITE_NAME = 'MAHALA';
 const SITE_ORIGIN = 'https://mahala.app';
 const OG_IMAGE_PATH = '/mahala.svg';
+const MOBILE_STORE_BANNER_DISMISSED_KEY = 'mahala-mobile-store-banner-dismissed';
+const STORE_LINKS = {
+  ios: 'https://apps.apple.com/',
+  android: 'https://play.google.com/store',
+};
 const PAGE_META: Record<Page, PageMeta> = {
   app: {
     title: 'MAHALA - mapa i objave iz tvoje mahale',
@@ -794,6 +802,28 @@ function UserLottieMarker({ coordinate }: { coordinate: Coordinate | null }) {
   return null;
 }
 
+function detectMobileStorePlatform(): 'ios' | 'android' | null {
+  const ua = navigator.userAgent || '';
+  const platform = navigator.platform || '';
+  const uaDataMobile = Boolean((navigator as Navigator & { userAgentData?: { mobile?: boolean } }).userAgentData?.mobile);
+  const hasTouch = navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches;
+  const isiPadOS = platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+
+  if (!hasTouch && !uaDataMobile) {
+    return null;
+  }
+
+  if (/Android/i.test(ua)) {
+    return 'android';
+  }
+
+  if (/iPhone|iPad|iPod/i.test(ua) || isiPadOS) {
+    return 'ios';
+  }
+
+  return null;
+}
+
 function Header({
   page,
   onPage,
@@ -808,6 +838,14 @@ function Header({
   onLocationPress: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [storeBannerPlatform, setStoreBannerPlatform] = useState<'ios' | 'android' | null>(null);
+  useEffect(() => {
+    if (localStorage.getItem(MOBILE_STORE_BANNER_DISMISSED_KEY) === '1') {
+      return;
+    }
+
+    setStoreBannerPlatform(detectMobileStorePlatform());
+  }, []);
   const locationLabel = (() => {
     if (locationStatus === 'locating') {
       return 'Lociranje';
@@ -828,46 +866,80 @@ function Header({
     { page: 'terms', label: 'Uslovi' },
     { page: 'cookies', label: 'Kolacici' },
   ];
+  const storeBanner = storeBannerPlatform ? {
+    href: storeBannerPlatform === 'ios' ? STORE_LINKS.ios : STORE_LINKS.android,
+    Icon: storeBannerPlatform === 'ios' ? Apple : Play,
+    title: storeBannerPlatform === 'ios' ? 'App Store' : 'Google Play',
+    subtitle: storeBannerPlatform === 'ios' ? 'Otvori MAHALA u App Store aplikaciji' : 'Otvori MAHALA u Google Play aplikaciji',
+    action: storeBannerPlatform === 'ios' ? 'OPEN' : 'OPEN',
+  } : null;
 
   return (
-    <header className="app-header">
-      <button className="brand" type="button" onClick={() => onPage('app')}>
-        <img src="/mahala.svg" alt="MAHALA" />
-        <span>MAHALA</span>
-      </button>
-      <button className="header-location-control" type="button" onClick={onLocationPress}>
-        <Navigation size={15} />
-        <span>{locationLabel}</span>
-        <ChevronDown size={16} />
-      </button>
-      <div className="header-actions">
-        <StoreButtons />
-        <div className="header-menu-wrap">
+    <header className={`app-header ${storeBanner ? 'has-mobile-store-banner' : ''}`}>
+      {storeBanner ? (
+        <div className="mobile-store-banner">
           <button
-            className="header-icon-button"
             type="button"
-            aria-label="Otvori meni"
-            onClick={() => setMenuOpen((open) => !open)}
+            className="mobile-store-banner-close"
+            aria-label="Zatvori preporuku"
+            onClick={() => {
+              localStorage.setItem(MOBILE_STORE_BANNER_DISMISSED_KEY, '1');
+              setStoreBannerPlatform(null);
+            }}
           >
-            <Menu size={21} />
+            <X size={15} />
           </button>
-          {menuOpen ? (
-            <nav className="header-menu" aria-label="Pravne stranice">
-              {menuItems.map((item) => (
-                <button
-                  key={item.page}
-                  className={page === item.page ? 'active' : ''}
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onPage(item.page);
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </nav>
-          ) : null}
+          <span className="mobile-store-banner-icon">
+            <storeBanner.Icon size={22} />
+          </span>
+          <span className="mobile-store-banner-copy">
+            <strong>{storeBanner.title}</strong>
+            <small>{storeBanner.subtitle}</small>
+          </span>
+          <a className="mobile-store-banner-action" href={storeBanner.href} target="_blank" rel="noreferrer">
+            {storeBanner.action}
+          </a>
+        </div>
+      ) : null}
+      <div className="app-header-row">
+        <button className="brand" type="button" onClick={() => onPage('app')}>
+          <img src="/mahala.svg" alt="MAHALA" />
+          <span>MAHALA</span>
+        </button>
+        <button className="header-location-control" type="button" onClick={onLocationPress}>
+          <Navigation size={15} />
+          <span>{locationLabel}</span>
+          <ChevronDown size={16} />
+        </button>
+        <div className="header-actions">
+          <StoreButtons />
+          <div className="header-menu-wrap">
+            <button
+              className="header-icon-button"
+              type="button"
+              aria-label="Otvori meni"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <Menu size={21} />
+            </button>
+            {menuOpen ? (
+              <nav className="header-menu" aria-label="Pravne stranice">
+                {menuItems.map((item) => (
+                  <button
+                    key={item.page}
+                    className={page === item.page ? 'active' : ''}
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onPage(item.page);
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </nav>
+            ) : null}
+          </div>
         </div>
       </div>
     </header>
@@ -1317,7 +1389,7 @@ function BottomNav({
   const items: Array<{ id: MobileView; label: string; icon: ReactNode }> = [
     { id: 'feed', label: 'Feed', icon: <Home size={19} /> },
     { id: 'topics', label: 'Teme', icon: <Search size={19} /> },
-    { id: 'map', label: 'Mapa', icon: <MapPin size={19} /> },
+    { id: 'map', label: 'Mapa', icon: <Map size={19} /> },
     { id: 'profile', label: 'Preuzmi', icon: <Download size={19} /> },
   ];
 

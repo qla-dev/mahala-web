@@ -67,6 +67,18 @@ button {
   backdrop-filter: blur(18px);
 }
 
+.app-header-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mobile-store-banner {
+  display: none;
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
@@ -197,6 +209,72 @@ button {
 .header-menu button:hover {
   background: rgba(124, 58, 237, 0.16);
   color: var(--text);
+}
+
+.mobile-store-banner-close,
+.mobile-store-banner-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-store-banner-close {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.mobile-store-banner-icon {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  background: #0a84ff;
+  color: #fff;
+}
+
+.mobile-store-banner-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.mobile-store-banner-copy strong {
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 15px;
+  line-height: 1.05;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-store-banner-copy small {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+  line-height: 1.15;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-store-banner-action {
+  min-height: 34px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #0a84ff;
+  color: #fff;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 950;
+  text-decoration: none;
 }
 
 .legal-nav button,
@@ -1315,9 +1393,10 @@ button {
 .map-controls {
   position: absolute;
   top: 14px;
-  z-index: 500;
+  z-index: 1200;
   display: flex;
   gap: 8px;
+  pointer-events: none;
 }
 
 .map-controls-left {
@@ -1339,6 +1418,8 @@ button {
   background: rgba(7, 7, 11, 0.94);
   color: var(--text);
   cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
   backdrop-filter: blur(12px);
 }
 
@@ -1870,10 +1951,38 @@ button {
   }
 
   .app-header {
-    height: 74px;
+    height: var(--mobile-header-height, 74px);
+    flex-direction: column;
+    justify-content: center;
+    gap: 0;
     border-bottom: 0;
     background: #000;
     padding: 0 12px;
+  }
+
+  .app-header.has-mobile-store-banner {
+    --mobile-header-height: 132px;
+    justify-content: flex-start;
+  }
+
+  .app-header.has-mobile-store-banner ~ .mobile-layout {
+    --mobile-header-height: 132px;
+  }
+
+  .app-header-row {
+    height: 74px;
+    flex-shrink: 0;
+  }
+
+  .mobile-store-banner {
+    display: flex;
+    width: calc(100% + 24px);
+    min-height: 58px;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: #1f1f23;
+    padding: 8px 12px;
   }
 
   .brand span {
@@ -1912,6 +2021,7 @@ button {
 
   .mobile-layout {
     --mobile-nav-height: calc(74px + env(safe-area-inset-bottom));
+    --mobile-header-height: 74px;
     display: flex;
     min-height: 0;
     flex: 1;
@@ -1940,8 +2050,8 @@ button {
   .topics-panel,
   .mobile-app-card,
   .public-topics-panel {
-    min-height: calc(100vh - 172px);
-    height: calc(100vh - 172px);
+    min-height: calc(100dvh - var(--mobile-header-height) - var(--mobile-nav-height));
+    height: calc(100dvh - var(--mobile-header-height) - var(--mobile-nav-height));
   }
 
   .reply-card.child {
@@ -1960,7 +2070,7 @@ button {
   }
 
   .map-shell {
-    height: calc(100dvh - 148px - env(safe-area-inset-bottom));
+    height: calc(100dvh - var(--mobile-header-height) - var(--mobile-nav-height));
     border: 0;
     border-radius: 0;
   }
