@@ -14,20 +14,26 @@ import 'leaflet/dist/leaflet.css';
 import {
   AppWindow,
   Bell,
+  ChevronDown,
   ChevronLeft,
+  ChevronUp,
   Compass,
   Download,
   Flame,
   Heart,
   Home,
   MapPin,
+  Menu,
   MessageCircle,
+  Navigation,
   Search,
   Shield,
   Sparkles,
   UserRound,
 } from 'lucide-react';
 import endpoints from './api/endpoints';
+import PublicPostCard from './components/PublicPostCard';
+import PublicTopicsPanel from './components/PublicTopicsPanel';
 import mahalaJumpLogo from './assets/mahalaJumpLogo.json';
 import { SARAJEVO_POLYGONS } from './data/sarajevoPolygons';
 
@@ -58,15 +64,23 @@ type Topic = {
   name: string;
   slug: string;
   count: number;
+  color?: string;
+  description?: string;
+  icon?: string;
+  premium?: boolean;
+  general?: boolean;
 };
 type Post = {
   id: string;
   topicId: string;
+  topicName?: string;
   author: string;
   mahala: string;
   content: string;
   timeAgo: string;
   votes: number;
+  upvotes: number;
+  downvotes: number;
   comments: number;
   color: string;
   replies: Array<{
@@ -88,22 +102,32 @@ const storeLinks = {
 };
 
 const fallbackTopics: Topic[] = [
-  { id: 'sve', name: 'Sve', slug: 'sve', count: 128 },
-  { id: 'glavna', name: 'Glavna', slug: 'glavna', count: 64 },
-  { id: 'komsiluk', name: 'Komsiluk', slug: 'komsiluk', count: 28 },
-  { id: 'pitanja', name: 'Pitanja', slug: 'pitanja', count: 21 },
-  { id: 'desavanja', name: 'Desavanja', slug: 'desavanja', count: 15 },
+  { id: 'sve', name: 'sve', slug: 'sve', count: 0, color: '#8b5cf6', icon: 'chatbubble-ellipses', general: true },
+  { id: 'glavna', name: 'glavna', slug: 'glavna', count: 0, description: 'Glavni lokalni tok za sve oko tebe', color: '#7c3aed', icon: 'chatbubble-ellipses', premium: false },
+  { id: 'eventi', name: 'eventi', slug: 'eventi', count: 0, description: 'Desavanja, okupljanja, svirke i lokalni dogadjaji', color: '#ec4899', icon: 'calendar', premium: false },
+  { id: 'posao', name: 'posao', slug: 'posao', count: 0, description: 'Poslovi, smjene, preporuke i lokalne prilike za rad', color: '#06b6d4', icon: 'briefcase', premium: false },
+  { id: 'ljubimci', name: 'ljubimci', slug: 'ljubimci', count: 0, description: 'Ljubimci, parkovi, setnje i komsijske sapice', color: '#84cc16', icon: 'paw', premium: false },
+  { id: 'izgubljeno-i-nadjeno', name: 'izgubljeno_i_nadjeno', slug: 'izgubljeno-i-nadjeno', count: 0, description: 'Objave o izgubljenim stvarima, pronalascima i komsijskoj pomoci', color: '#fde047', icon: 'search', premium: false },
+  { id: 'politika', name: 'politika', slug: 'politika', count: 0, description: 'Vruce teme, lokalni pritisak i gradske price', color: '#dc2626', icon: 'megaphone', premium: false },
+  { id: 'nocna-smjena', name: 'nocna_smjena', slug: 'nocna-smjena', count: 0, description: 'Kasni satovi, nocne dojave i ekipa koja je jos budna', color: '#0b0a10', icon: 'moon', premium: false },
+  { id: 'gaming', name: 'gaming', slug: 'gaming', count: 0, description: 'Igre, ekipe, turniri i gejming dogovori', color: '#8b5e34', icon: 'game-controller', premium: false },
+  { id: 'sport', name: 'sport', slug: 'sport', count: 0, description: 'Utakmice, treninzi, rekreacija i lokalni sportski razgovori', color: '#ef4444', icon: 'football', premium: false },
+  { id: 'prodajem-i-kupujem', name: 'prodajem_i_kupujem', slug: 'prodajem-i-kupujem', count: 0, description: 'Kupovina, prodaja, razmjena i lokalne ponude', color: '#2dd4bf', icon: 'pricetag', premium: true },
+  { id: 'dating', name: 'dating', slug: 'dating', count: 0, description: 'Upoznavanje, izlasci i lokalne simpatije', color: '#ec4899', icon: 'heart', premium: true },
 ];
 
 const fallbackPosts: Post[] = [
   {
     id: 'p1',
     topicId: 'glavna',
+    topicName: 'Glavna',
     author: '@mahalac_92',
     mahala: 'Dobrinja',
     content: 'Jutros opet guzva kod kruznog. Ima li iko info kad zavrsavaju radove?',
     timeAgo: 'prije 8 min',
     votes: 126,
+    upvotes: 126,
+    downvotes: 0,
     comments: 18,
     color: '#8b5cf6',
     replies: [
@@ -126,11 +150,14 @@ const fallbackPosts: Post[] = [
   {
     id: 'p2',
     topicId: 'komsiluk',
+    topicName: 'Komsiluk',
     author: '@hiperbola_55',
     mahala: 'C5',
     content: 'Ko je ostavio kljuceve kod lifta u trecem ulazu, kod portira su.',
     timeAgo: 'prije 22 min',
     votes: 89,
+    upvotes: 89,
+    downvotes: 0,
     comments: 11,
     color: '#8b5cf6',
     replies: [
@@ -146,11 +173,14 @@ const fallbackPosts: Post[] = [
   {
     id: 'p3',
     topicId: 'pitanja',
+    topicName: 'Pitanja',
     author: '@sarajka',
     mahala: 'Grbavica',
     content: 'Preporuka za dobrog majstora za bojler? Treba hitno.',
     timeAgo: 'prije 1h',
     votes: 52,
+    upvotes: 52,
+    downvotes: 0,
     comments: 24,
     color: '#10b981',
     replies: [
@@ -166,11 +196,14 @@ const fallbackPosts: Post[] = [
   {
     id: 'p4',
     topicId: 'desavanja',
+    topicName: 'Desavanja',
     author: '@rajvosa',
     mahala: 'Bascarsija',
     content: 'Veceras mali koncert kod Vijecnice, izgleda fino za prosetati.',
     timeAgo: 'prije 2h',
     votes: 203,
+    upvotes: 203,
+    downvotes: 0,
     comments: 36,
     color: '#f59e0b',
     replies: [],
@@ -257,16 +290,23 @@ function normalizePost(value: unknown): Post | null {
     return null;
   }
 
+  const score = Number(post.score || 0);
+  const upvotes = Number(post.upvotes ?? Math.max(score, 0));
+  const downvotes = Number(post.downvotes ?? Math.max(-score, 0));
+
   return {
     id: `api-post-${post.id}`,
     topicId: post.topic_id ? String(post.topic_id) : 'glavna',
+    topicName: post.topic_name ? String(post.topic_name) : undefined,
     author: post.is_anonymous ? 'komsija' : String(post.author_username || 'mahalac'),
-    mahala: post.mahala_name ? String(post.mahala_name) : String(post.mahala_id || 'MAHALA'),
+    mahala: post.mahala_name ? String(post.mahala_name) : String(post.location || post.mahala_id || 'MAHALA'),
     content: String(post.content || ''),
-    timeAgo: 'sada',
-    votes: Number(post.score || post.upvotes || 0),
-    comments: Number(post.comments_count || 0),
-    color: String(post.color_hex || '#8b5cf6'),
+    timeAgo: String(post.time_ago || post.created_ago || 'sada'),
+    votes: score || upvotes - downvotes,
+    upvotes,
+    downvotes,
+    comments: Number(post.comments_count || post.comment_count || 0),
+    color: String(post.topic_color || post.color_hex || '#8b5cf6'),
     replies: [],
   };
 }
@@ -419,22 +459,73 @@ function StoreButtons() {
 function Header({
   page,
   onPage,
+  selectedZone,
+  locationStatus,
 }: {
   page: Page;
   onPage: (page: Page) => void;
+  selectedZone: Zone | null;
+  locationStatus: LocationStatus;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const locationLabel = (() => {
+    if (locationStatus === 'locating' || locationStatus === 'idle') {
+      return 'Locira';
+    }
+
+    if (locationStatus !== 'granted') {
+      return 'Lokacije nedostupna';
+    }
+
+    return selectedZone?.name || 'Lokacije nedostupna';
+  })();
+  const menuItems: Array<{ page: Page; label: string }> = [
+    { page: 'privacy', label: 'Privatnost' },
+    { page: 'terms', label: 'Uslovi' },
+    { page: 'cookies', label: 'Kolacici' },
+  ];
+
   return (
     <header className="app-header">
       <button className="brand" type="button" onClick={() => onPage('app')}>
         <img src="/mahala.svg" alt="MAHALA" />
         <span>MAHALA</span>
       </button>
-      <nav className="legal-nav" aria-label="Pravne stranice">
-        <button className={page === 'privacy' ? 'active' : ''} onClick={() => onPage('privacy')}>Privatnost</button>
-        <button className={page === 'terms' ? 'active' : ''} onClick={() => onPage('terms')}>Uslovi</button>
-        <button className={page === 'cookies' ? 'active' : ''} onClick={() => onPage('cookies')}>Kolacici</button>
-      </nav>
-      <StoreButtons />
+      <button className="header-location-control" type="button">
+        <Navigation size={15} />
+        <span>{locationLabel}</span>
+        <ChevronDown size={16} />
+      </button>
+      <div className="header-actions">
+        <StoreButtons />
+        <div className="header-menu-wrap">
+          <button
+            className="header-icon-button"
+            type="button"
+            aria-label="Otvori meni"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <Menu size={21} />
+          </button>
+          {menuOpen ? (
+            <nav className="header-menu" aria-label="Pravne stranice">
+              {menuItems.map((item) => (
+                <button
+                  key={item.page}
+                  className={page === item.page ? 'active' : ''}
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onPage(item.page);
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          ) : null}
+        </div>
+      </div>
     </header>
   );
 }
@@ -490,6 +581,57 @@ function PostCard({
   );
 }
 
+function NativePostCard({
+  post,
+  active,
+  onClick,
+}: {
+  post: Post;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const author = post.author.startsWith('@') ? post.author : `@${post.author}`;
+
+  return (
+    <button
+      type="button"
+      className={`post-card native-post-card ${active ? 'active' : ''}`}
+      style={{ backgroundColor: post.color }}
+      onClick={onClick}
+    >
+      <span className="post-meta-row">
+        <span>{post.mahala}</span>
+        <span>-</span>
+        <span>{author}</span>
+        <span>-</span>
+        <span>{post.timeAgo}</span>
+      </span>
+      <span className="post-topic-pill">{post.topicName || post.topicId}</span>
+      <span className="post-content">{post.content}</span>
+      <span className="post-footer">
+        <span className="post-action-pill">
+          <MessageCircle size={13} />
+          {post.comments} komentara
+        </span>
+        <span className="post-action-pill drot-pill">
+          <Bell size={13} />
+          Drot
+        </span>
+      </span>
+      <span className="post-vote-rail">
+        <span className="vote-badge">
+          <ChevronUp size={18} />
+          <strong>{post.upvotes}</strong>
+        </span>
+        <span className="vote-badge">
+          <strong>{post.downvotes}</strong>
+          <ChevronDown size={18} />
+        </span>
+      </span>
+    </button>
+  );
+}
+
 function FeedPanel({
   topics,
   activeTopic,
@@ -499,6 +641,7 @@ function FeedPanel({
   onPost,
   locationStatus,
   onLocate,
+  onOpenLocationSettings,
 }: {
   topics: Topic[];
   activeTopic: string;
@@ -508,6 +651,7 @@ function FeedPanel({
   onPost: (post: Post) => void;
   locationStatus: LocationStatus;
   onLocate: () => void;
+  onOpenLocationSettings: () => void;
 }) {
   const needsLocation = locationStatus !== 'granted';
   const locationCopy = (() => {
@@ -524,8 +668,8 @@ function FeedPanel({
     if (locationStatus === 'denied') {
       return {
         title: 'Lokacija je blokirana',
-        body: 'U browser postavkama dozvoli lokaciju za ovu stranicu, pa pokusaj ponovo.',
-        action: 'Pokusaj ponovo',
+        body: 'U Safari postavkama dozvoli lokaciju za ovu stranicu, pa se vrati na MAHALA web.',
+        action: 'Otvori Safari postavke',
       };
     }
 
@@ -558,7 +702,7 @@ function FeedPanel({
           <LottieBox className="feed-empty-lottie" />
           <h2>{locationCopy.title}</h2>
           <p>{locationCopy.body}</p>
-          <button type="button" onClick={onLocate}>
+          <button type="button" onClick={locationStatus === 'denied' ? onOpenLocationSettings : onLocate}>
             {locationCopy.action}
           </button>
         </div>
@@ -573,7 +717,7 @@ function FeedPanel({
           <FeedTabs topics={topics} activeTopic={activeTopic} onTopic={onTopic} />
           <div className="post-list">
             {posts.map((post) => (
-              <PostCard
+              <PublicPostCard
                 key={post.id}
                 post={post}
                 active={selectedPost?.id === post.id}
@@ -772,8 +916,8 @@ function BottomNav({
 }) {
   const items: Array<{ id: MobileView; label: string; icon: ReactNode }> = [
     { id: 'feed', label: 'Feed', icon: <Home size={19} /> },
-    { id: 'map', label: 'Mapa', icon: <MapPin size={19} /> },
     { id: 'topics', label: 'Teme', icon: <Search size={19} /> },
+    { id: 'map', label: 'Mapa', icon: <MapPin size={19} /> },
     { id: 'profile', label: 'App', icon: <UserRound size={19} /> },
   ];
 
@@ -884,6 +1028,11 @@ export default function App() {
             name: String(topic.name ?? topic.slug ?? 'Tema'),
             slug: String(topic.slug ?? topic.id ?? topic.name),
             count: Number(topic.posts_count ?? topic.count ?? 0),
+            color: String(topic.color || topic.color_hex || topic.topic_color || '#8b5cf6'),
+            description: topic.description ? String(topic.description) : undefined,
+            icon: topic.icon ? String(topic.icon) : undefined,
+            premium: Boolean(topic.premium),
+            general: Boolean(topic.general),
           })) as Topic[]
         : [];
 
@@ -919,7 +1068,11 @@ export default function App() {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         };
+        const currentZone = zones.find((zone) => pointInPolygon(coordinate, zone.coordinates));
         setUserCoordinate(coordinate);
+        if (currentZone) {
+          setSelectedZone(currentZone);
+        }
         setLocationStatus('granted');
         void loadFeedForLocation(coordinate);
       },
@@ -932,7 +1085,16 @@ export default function App() {
         timeout: 12_000,
       },
     );
-  }, [loadFeedForLocation]);
+  }, [loadFeedForLocation, zones]);
+
+  const openLocationSettings = useCallback(() => {
+    const candidates = [
+      'App-Prefs:SAFARI',
+      'prefs:root=SAFARI',
+    ];
+    const target = candidates[0];
+    window.location.href = target;
+  }, []);
 
   useEffect(() => {
     if (zones.length === 0 || locationStatus !== 'idle') {
@@ -982,13 +1144,14 @@ export default function App() {
       onPost={(post) => setSelectedPost(post)}
       locationStatus={locationStatus}
       onLocate={requestLocation}
+      onOpenLocationSettings={openLocationSettings}
     />
   );
 
   if (page !== 'app') {
     return (
       <div className="app-shell legal-shell">
-        <Header page={page} onPage={navigateToPage} />
+        <Header page={page} onPage={navigateToPage} selectedZone={selectedZone} locationStatus={locationStatus} />
         <LegalPage page={page} onBack={() => navigateToPage('app')} />
       </div>
     );
@@ -996,20 +1159,14 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Header page={page} onPage={navigateToPage} />
+      <Header page={page} onPage={navigateToPage} selectedZone={selectedZone} locationStatus={locationStatus} />
       <main className="desktop-layout">
         <div className="desktop-left">
           {appBody}
         </div>
         <MahalaMap zones={zones} selectedZone={selectedZone} userCoordinate={userCoordinate} onZone={setSelectedZone} />
         <aside className="desktop-right">
-          <div className="promo-card">
-            <img src="/adaptive-icon.png" alt="MAHALA app" />
-            <p>MAHALA native</p>
-            <h2>Objavljuj, glasaj i prati mahalu iz aplikacije.</h2>
-            <StoreButtons />
-          </div>
-          <TopicPanel topics={topics} activeTopic={activeTopic} onTopic={setActiveTopic} />
+          <PublicTopicsPanel topics={topics} activeTopic={activeTopic} onTopic={setActiveTopic} />
         </aside>
       </main>
 
@@ -1017,7 +1174,7 @@ export default function App() {
         <div className="mobile-scroll">
           {mobileView === 'feed' ? appBody : null}
           {mobileView === 'map' ? <MahalaMap zones={zones} selectedZone={selectedZone} userCoordinate={userCoordinate} onZone={setSelectedZone} /> : null}
-          {mobileView === 'topics' ? <TopicPanel topics={topics} activeTopic={activeTopic} onTopic={(topic) => { setActiveTopic(topic); setMobileView('feed'); }} /> : null}
+          {mobileView === 'topics' ? <PublicTopicsPanel topics={topics} activeTopic={activeTopic} onTopic={(topic) => { setActiveTopic(topic); setMobileView('feed'); }} /> : null}
           {mobileView === 'profile' ? (
             <section className="mobile-app-card">
               <AppWindow size={28} />
