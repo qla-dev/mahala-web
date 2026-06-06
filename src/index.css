@@ -85,7 +85,7 @@ button {
   gap: 10px;
   color: #7c3aed;
   background: transparent;
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 950;
   letter-spacing: 0.02em;
   min-width: 0;
@@ -93,8 +93,8 @@ button {
 
 .brand img {
   display: block;
-  height: 44px;
-  width: 44px;
+  height: 54px;
+  width: 54px;
 }
 
 .brand span {
@@ -234,9 +234,7 @@ button {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 11px;
-  background: #0a84ff;
-  color: #fff;
+  color: var(--primary);
 }
 
 .mobile-store-banner-copy {
@@ -269,7 +267,7 @@ button {
   min-height: 34px;
   flex-shrink: 0;
   border-radius: 999px;
-  background: #0a84ff;
+  background: var(--primary);
   color: #fff;
   padding: 0 14px;
   font-size: 13px;
@@ -1574,6 +1572,7 @@ button {
 .public-topics-panel {
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   border: 1px solid var(--border);
   border-radius: 20px;
   background: #111118;
@@ -1639,7 +1638,7 @@ button {
   right: 16px;
   overflow: hidden;
   color: rgba(255, 255, 255, 0.34);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 18px;
   pointer-events: none;
@@ -1655,7 +1654,7 @@ button {
   background: transparent;
   color: var(--text);
   padding: 0 16px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -1980,13 +1979,12 @@ button {
     min-height: 58px;
     align-items: center;
     gap: 10px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     background: #1f1f23;
     padding: 8px 12px;
   }
 
   .brand span {
-    font-size: 20px;
+    font-size: 24px;
   }
 
   .brand {
@@ -1994,8 +1992,8 @@ button {
   }
 
   .brand img {
-    height: 36px;
-    width: 36px;
+    height: 66px;
+    width: 66px;
   }
 
   .legal-nav {

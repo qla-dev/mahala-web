@@ -840,10 +840,6 @@ function Header({
   const [menuOpen, setMenuOpen] = useState(false);
   const [storeBannerPlatform, setStoreBannerPlatform] = useState<'ios' | 'android' | null>(null);
   useEffect(() => {
-    if (localStorage.getItem(MOBILE_STORE_BANNER_DISMISSED_KEY) === '1') {
-      return;
-    }
-
     setStoreBannerPlatform(detectMobileStorePlatform());
   }, []);
   const locationLabel = (() => {
@@ -871,7 +867,7 @@ function Header({
     Icon: storeBannerPlatform === 'ios' ? Apple : Play,
     title: storeBannerPlatform === 'ios' ? 'App Store' : 'Google Play',
     subtitle: storeBannerPlatform === 'ios' ? 'Otvori MAHALA u App Store aplikaciji' : 'Otvori MAHALA u Google Play aplikaciji',
-    action: storeBannerPlatform === 'ios' ? 'OPEN' : 'OPEN',
+    action: storeBannerPlatform === 'ios' ? 'Preuzmi' : 'Preuzmi',
   } : null;
 
   return (
@@ -883,14 +879,13 @@ function Header({
             className="mobile-store-banner-close"
             aria-label="Zatvori preporuku"
             onClick={() => {
-              localStorage.setItem(MOBILE_STORE_BANNER_DISMISSED_KEY, '1');
               setStoreBannerPlatform(null);
             }}
           >
             <X size={15} />
           </button>
           <span className="mobile-store-banner-icon">
-            <storeBanner.Icon size={22} />
+            <storeBanner.Icon size={22} fill="currentColor" />
           </span>
           <span className="mobile-store-banner-copy">
             <strong>{storeBanner.title}</strong>
