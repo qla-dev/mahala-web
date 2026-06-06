@@ -97,6 +97,13 @@ type MobileView = 'feed' | 'map' | 'topics' | 'profile';
 type LocationStatus = 'idle' | 'locating' | 'granted' | 'denied' | 'unsupported' | 'error';
 
 const DEFAULT_CENTER: [number, number] = [43.8563, 18.4131];
+const MOBILE_QUERY = '(max-width: 920px)';
+const FEED_SORT_TABS = [
+  { id: 'recent', label: 'Najnovije objave' },
+  { id: 'popular', label: 'Popularne objave' },
+  { id: 'commented', label: 'Najkomentaranije objave' },
+] as const;
+type FeedSort = typeof FEED_SORT_TABS[number]['id'];
 const storeLinks = {
   ios: 'https://apps.apple.com/',
   android: 'https://play.google.com/store',
