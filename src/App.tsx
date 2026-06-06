@@ -114,6 +114,14 @@ function isSafariBrowser() {
   return /Safari/i.test(userAgent) && !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|Android/i.test(userAgent);
 }
 
+function isFiniteCoordinate(coordinate: Coordinate | null): coordinate is Coordinate {
+  return Boolean(
+    coordinate &&
+      Number.isFinite(coordinate.latitude) &&
+      Number.isFinite(coordinate.longitude),
+  );
+}
+
 const fallbackTopics: Topic[] = [
   { id: 'sve', name: 'sve', slug: 'sve', count: 0, color: '#8b5cf6', icon: 'chatbubble-ellipses', general: true },
   { id: 'glavna', name: 'glavna', slug: 'glavna', count: 0, description: 'Glavni lokalni tok za sve oko tebe', color: '#7c3aed', icon: 'chatbubble-ellipses', premium: false },
@@ -460,7 +468,7 @@ function UserLottieMarker({ coordinate }: { coordinate: Coordinate | null }) {
   const animationRef = useRef<ReturnType<typeof lottie.loadAnimation> | null>(null);
 
   useEffect(() => {
-    if (!coordinate) {
+    if (!isFiniteCoordinate(coordinate)) {
       markerRef.current?.remove();
       markerRef.current = null;
       animationRef.current?.destroy();
@@ -468,33 +476,50 @@ function UserLottieMarker({ coordinate }: { coordinate: Coordinate | null }) {
       return undefined;
     }
 
+    const safari = isSafariBrowser();
     const position = L.latLng(coordinate.latitude, coordinate.longitude);
 
-    if (!markerRef.current) {
-      const icon = L.divIcon({
-        className: 'mahala-user-marker',
-        html: '<div class="mahala-user-marker-inner"></div>',
-        iconAnchor: [34, 58],
-        iconSize: [68, 68],
-      });
-      markerRef.current = L.marker(position, { icon, interactive: false }).addTo(map);
-    } else {
-      markerRef.current.setLatLng(position);
-    }
+    try {
+      if (!markerRef.current) {
+        const icon = L.divIcon({
+          className: 'mahala-user-marker',
+          html: safari
+            ? '<div class="mahala-user-marker-dot"></div>'
+            : '<div class="mahala-user-marker-inner"></div>',
+          iconAnchor: [34, 58],
+          iconSize: [68, 68],
+        });
+        markerRef.current = L.marker(position, { icon, interactive: false }).addTo(map);
+      } else {
+        markerRef.current.setLatLng(position);
+      }
 
-    map.flyTo(position, Math.max(map.getZoom(), 14), { animate: true, duration: 0.75 });
+      if (safari) {
+        map.setView(position, Math.max(map.getZoom(), 14), { animate: false });
+      } else {
+        map.flyTo(position, Math.max(map.getZoom(), 14), { animate: true, duration: 0.75 });
+      }
+    } catch {
+      markerRef.current?.remove();
+      markerRef.current = null;
+      return undefined;
+    }
 
     const markerElement = markerRef.current.getElement();
     const lottieContainer = markerElement?.querySelector('.mahala-user-marker-inner') as HTMLDivElement | null;
 
-    if (lottieContainer && !animationRef.current) {
-      animationRef.current = lottie.loadAnimation({
-        animationData: mahalaJumpLogo,
-        autoplay: true,
-        container: lottieContainer,
-        loop: true,
-        renderer: 'svg',
-      });
+    if (lottieContainer && !animationRef.current && !safari) {
+      try {
+        animationRef.current = lottie.loadAnimation({
+          animationData: mahalaJumpLogo,
+          autoplay: true,
+          container: lottieContainer,
+          loop: true,
+          renderer: 'svg',
+        });
+      } catch {
+        animationRef.current = null;
+      }
     }
 
     return undefined;
@@ -1171,20 +1196,20 @@ export default function App() {
         return;
       }
 
-        const coordinate = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-        const nextCurrentMahalas = getCurrentMahalas(coordinate, sarajevoZones, zones);
-        const currentZone = nextCurrentMahalas.find((zone) => Number(zone.level) > 0) || nextCurrentMahalas[0];
-        setUserCoordinate(coordinate);
-        setCurrentMahalas(nextCurrentMahalas);
-        setEnabledMahalaIds(new Set(nextCurrentMahalas.map((zone) => String(zone.id))));
-        if (currentZone) {
-          setSelectedZone(currentZone);
-        }
-        setLocationStatus('granted');
-        void loadFeedForMahalaIds(nextCurrentMahalas.map((zone) => String(zone.id)));
+      const coordinate = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+      const nextCurrentMahalas = getCurrentMahalas(coordinate, sarajevoZones, zones);
+      const currentZone = nextCurrentMahalas.find((zone) => Number(zone.level) > 0) || nextCurrentMahalas[0];
+      setUserCoordinate(coordinate);
+      setCurrentMahalas(nextCurrentMahalas);
+      setEnabledMahalaIds(new Set(nextCurrentMahalas.map((zone) => String(zone.id))));
+      if (currentZone) {
+        setSelectedZone(currentZone);
+      }
+      setLocationStatus('granted');
+      void loadFeedForMahalaIds(nextCurrentMahalas.map((zone) => String(zone.id)));
     };
 
     const handleError = (error: GeolocationPositionError) => {
@@ -1192,7 +1217,7 @@ export default function App() {
         return;
       }
 
-        setLocationStatus(error.code === error.PERMISSION_DENIED ? 'denied' : 'error');
+      setLocationStatus(error.code === error.PERMISSION_DENIED ? 'denied' : 'error');
     };
 
     try {

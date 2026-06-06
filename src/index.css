@@ -797,6 +797,18 @@ button {
   filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.45));
 }
 
+.mahala-user-marker-dot {
+  width: 34px;
+  height: 34px;
+  margin: 17px;
+  border: 4px solid #f8fafc;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow:
+    0 0 0 8px rgba(139, 92, 246, 0.24),
+    0 16px 22px rgba(0, 0, 0, 0.45);
+}
+
 .desktop-right {
   min-height: 0;
 }
@@ -987,6 +999,50 @@ button {
 
 .legal-shell {
   overflow-y: auto;
+}
+
+.app-error-shell {
+  background: #050508;
+}
+
+.app-error-panel {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+}
+
+.app-error-panel h1 {
+  max-width: 520px;
+  margin: 0;
+  color: #f8fafc;
+  font-size: 30px;
+  line-height: 1.12;
+  font-weight: 950;
+}
+
+.app-error-panel p {
+  max-width: 420px;
+  margin: 12px 0 0;
+  color: #d4d4d8;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 750;
+}
+
+.app-error-panel button {
+  min-height: 42px;
+  margin-top: 20px;
+  border-radius: 999px;
+  background: var(--accent-strong);
+  color: white;
+  padding: 0 18px;
+  font-size: 13px;
+  font-weight: 950;
 }
 
 .legal-page {
