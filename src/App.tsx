@@ -19,7 +19,7 @@ import {
   Heart,
   Home,
   Apple,
-  Map,
+  Map as MapIcon,
   Menu,
   MessageCircle,
   Moon,
@@ -1389,7 +1389,7 @@ function BottomNav({
   const items: Array<{ id: MobileView; label: string; icon: ReactNode }> = [
     { id: 'feed', label: 'Feed', icon: <Home size={19} /> },
     { id: 'topics', label: 'Teme', icon: <Search size={19} /> },
-    { id: 'map', label: 'Mapa', icon: <Map size={19} /> },
+    { id: 'map', label: 'Mapa', icon: <MapIcon size={19} /> },
     { id: 'profile', label: 'Preuzmi', icon: <Download size={19} /> },
   ];
 
