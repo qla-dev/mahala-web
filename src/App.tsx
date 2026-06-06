@@ -109,6 +109,11 @@ const storeLinks = {
   android: 'https://play.google.com/store',
 };
 
+function isSafariBrowser() {
+  const userAgent = window.navigator.userAgent;
+  return /Safari/i.test(userAgent) && !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|Android/i.test(userAgent);
+}
+
 const fallbackTopics: Topic[] = [
   { id: 'sve', name: 'sve', slug: 'sve', count: 0, color: '#8b5cf6', icon: 'chatbubble-ellipses', general: true },
   { id: 'glavna', name: 'glavna', slug: 'glavna', count: 0, description: 'Glavni lokalni tok za sve oko tebe', color: '#7c3aed', icon: 'chatbubble-ellipses', premium: false },
@@ -531,8 +536,12 @@ function Header({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const locationLabel = (() => {
-    if (locationStatus === 'locating' || locationStatus === 'idle') {
+    if (locationStatus === 'locating') {
       return 'Locira';
+    }
+
+    if (locationStatus === 'idle') {
+      return 'Lokacija';
     }
 
     if (locationStatus !== 'granted') {
@@ -1029,6 +1038,8 @@ export default function App() {
   const [userCoordinate, setUserCoordinate] = useState<Coordinate | null>(null);
   const [currentMahalas, setCurrentMahalas] = useState<Zone[]>([]);
   const [enabledMahalaIds, setEnabledMahalaIds] = useState<Set<string>>(() => new Set());
+  const feedRequestIdRef = useRef(0);
+  const locationRequestIdRef = useRef(0);
   const mapZones = useMemo(() => [...sarajevoZones, ...zones], [sarajevoZones, zones]);
 
   const navigateToPage = (nextPage: Page) => {
@@ -1086,6 +1097,8 @@ export default function App() {
   }, []);
 
   const loadFeedForMahalaIds = useCallback(async (feedMahalaIds: string[]) => {
+    const requestId = feedRequestIdRef.current + 1;
+    feedRequestIdRef.current = requestId;
     const resolvedIds = feedMahalaIds.length ? feedMahalaIds : DEFAULT_PUBLIC_MAHALA_IDS;
 
     const [postsResult, topicsResult] = await Promise.allSettled([
@@ -1096,6 +1109,10 @@ export default function App() {
         headers: { Accept: 'application/json' },
       }).then((response) => response.json()),
     ]);
+
+    if (requestId !== feedRequestIdRef.current) {
+      return;
+    }
 
     if (postsResult.status === 'fulfilled') {
       const nextPosts = Array.isArray(postsResult.value?.data)
@@ -1124,6 +1141,10 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    void loadFeedForMahalaIds(DEFAULT_PUBLIC_MAHALA_IDS);
+  }, [loadFeedForMahalaIds]);
+
   const loadFeedForLocation = useCallback(async (coordinate: Coordinate) => {
     const feedMahalaIds = getNearbyMahalaIds(coordinate, sarajevoZones, zones);
     await loadFeedForMahalaIds(feedMahalaIds);
@@ -1141,9 +1162,15 @@ export default function App() {
       return;
     }
 
+    const requestId = locationRequestIdRef.current + 1;
+    locationRequestIdRef.current = requestId;
     setLocationStatus('locating');
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
+
+    const handlePosition = (position: GeolocationPosition) => {
+      if (requestId !== locationRequestIdRef.current) {
+        return;
+      }
+
         const coordinate = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
@@ -1158,16 +1185,25 @@ export default function App() {
         }
         setLocationStatus('granted');
         void loadFeedForMahalaIds(nextCurrentMahalas.map((zone) => String(zone.id)));
-      },
-      (error) => {
+    };
+
+    const handleError = (error: GeolocationPositionError) => {
+      if (requestId !== locationRequestIdRef.current) {
+        return;
+      }
+
         setLocationStatus(error.code === error.PERMISSION_DENIED ? 'denied' : 'error');
-      },
-      {
+    };
+
+    try {
+      navigator.geolocation.getCurrentPosition(handlePosition, handleError, {
         enableHighAccuracy: true,
         maximumAge: 60_000,
         timeout: 12_000,
-      },
-    );
+      });
+    } catch {
+      setLocationStatus('error');
+    }
   }, [loadFeedForMahalaIds, sarajevoZones, zones]);
 
   const toggleCurrentMahala = useCallback((id: string) => {
@@ -1200,6 +1236,10 @@ export default function App() {
 
   useEffect(() => {
     if (sarajevoZones.length === 0 || locationStatus !== 'idle') {
+      return undefined;
+    }
+
+    if (isSafariBrowser()) {
       return undefined;
     }
 
