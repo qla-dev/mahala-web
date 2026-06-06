@@ -32,6 +32,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import endpoints from './api/endpoints';
+import CurrentMahalasFilter from './components/CurrentMahalasFilter';
 import PublicPostCard from './components/PublicPostCard';
 import PublicTopicsPanel from './components/PublicTopicsPanel';
 import mahalaJumpLogo from './assets/mahalaJumpLogo.json';
@@ -318,7 +319,7 @@ function polygonPath(zone: Zone): [number, number][] {
   ]);
 }
 
-function pointInPolygon(point: Coordinate, polygon: Coordinate[]) {
+function pointInRing(point: Coordinate, polygon: Coordinate[]) {
   let inside = false;
   let j = polygon.length - 1;
 
@@ -340,12 +341,66 @@ function pointInPolygon(point: Coordinate, polygon: Coordinate[]) {
   return inside;
 }
 
-function getNearbyMahalaIds(coordinate: Coordinate, zones: Zone[]) {
-  const matchingIds = zones
-    .filter((zone) => pointInPolygon(coordinate, zone.coordinates))
+function pointInPolygon(point: Coordinate, polygon: Coordinate[], holes: Coordinate[][] = []) {
+  if (!pointInRing(point, polygon)) {
+    return false;
+  }
+
+  return !holes.some((hole) => pointInRing(point, hole));
+}
+
+function getCurrentMahalas(coordinate: Coordinate, sarajevoZones: Zone[], userZones: Zone[]) {
+  const sarajevoMatches = sarajevoZones
+    .filter((zone) => pointInPolygon(coordinate, zone.coordinates, zone.holes || []))
+    .map((zone) => ({ ...zone, level: 0 }));
+  const userMatches = userZones
+    .filter((zone) => pointInPolygon(coordinate, zone.coordinates, zone.holes || []));
+
+  return [...sarajevoMatches, ...userMatches];
+}
+
+function getNearbyMahalaIds(coordinate: Coordinate, sarajevoZones: Zone[], userZones: Zone[]) {
+  const matchingIds = getCurrentMahalas(coordinate, sarajevoZones, userZones)
     .map((zone) => String(zone.id));
 
   return matchingIds.length ? matchingIds.slice(0, 10) : DEFAULT_PUBLIC_MAHALA_IDS;
+}
+
+function mergeTopicsWithGeneric(apiTopics: Topic[]) {
+  const bySlugOrId = new Map<string, Topic>();
+
+  for (const topic of apiTopics) {
+    bySlugOrId.set(topic.slug, topic);
+    bySlugOrId.set(topic.id, topic);
+  }
+
+  const merged = fallbackTopics.map((genericTopic) => {
+    const apiTopic = bySlugOrId.get(genericTopic.slug) || bySlugOrId.get(genericTopic.id);
+
+    return {
+      ...genericTopic,
+      ...(apiTopic || {}),
+      id: genericTopic.id,
+      name: genericTopic.name,
+      slug: genericTopic.slug,
+      color: apiTopic?.color || genericTopic.color,
+      description: genericTopic.description,
+      icon: apiTopic?.icon || genericTopic.icon,
+      premium: genericTopic.premium,
+      general: genericTopic.general,
+      count: Number(apiTopic?.count ?? genericTopic.count ?? 0),
+    };
+  });
+
+  const genericKeys = new Set(merged.flatMap((topic) => [topic.id, topic.slug]));
+  const customTopics = apiTopics.filter((topic) => !genericKeys.has(topic.id) && !genericKeys.has(topic.slug));
+
+  const finalTopics = [...merged, ...customTopics];
+  const totalCount = finalTopics
+    .filter((topic) => topic.id !== 'sve')
+    .reduce((sum, topic) => sum + Number(topic.count || 0), 0);
+
+  return finalTopics.map((topic) => topic.id === 'sve' ? { ...topic, count: totalCount } : topic);
 }
 
 function LottieBox({ className }: { className: string }) {
@@ -642,6 +697,9 @@ function FeedPanel({
   locationStatus,
   onLocate,
   onOpenLocationSettings,
+  currentMahalas,
+  enabledMahalaIds,
+  onToggleMahala,
 }: {
   topics: Topic[];
   activeTopic: string;
@@ -652,6 +710,9 @@ function FeedPanel({
   locationStatus: LocationStatus;
   onLocate: () => void;
   onOpenLocationSettings: () => void;
+  currentMahalas: Zone[];
+  enabledMahalaIds: Set<string>;
+  onToggleMahala: (id: string) => void;
 }) {
   const needsLocation = locationStatus !== 'granted';
   const locationCopy = (() => {
@@ -706,25 +767,32 @@ function FeedPanel({
             {locationCopy.action}
           </button>
         </div>
-      ) : posts.length === 0 ? (
-        <div className="feed-empty-state">
-          <LottieBox className="feed-empty-lottie" />
-          <h2>Nema objava u blizini</h2>
-          <p>Kada se pojave nove objave ili teme u tvojim trenutnim mahalama, prikazat ce se ovdje.</p>
-        </div>
       ) : (
         <>
+          <CurrentMahalasFilter
+            mahalas={currentMahalas}
+            enabledIds={enabledMahalaIds}
+            onToggle={onToggleMahala}
+          />
           <FeedTabs topics={topics} activeTopic={activeTopic} onTopic={onTopic} />
-          <div className="post-list">
-            {posts.map((post) => (
-              <PublicPostCard
-                key={post.id}
-                post={post}
-                active={selectedPost?.id === post.id}
-                onClick={() => onPost(post)}
-              />
-            ))}
-          </div>
+          {posts.length === 0 ? (
+            <div className="feed-empty-state compact">
+              <LottieBox className="feed-empty-lottie" />
+              <h2>Nema objava u blizini</h2>
+              <p>Kada se pojave nove objave ili teme u tvojim trenutnim mahalama, prikazat ce se ovdje.</p>
+            </div>
+          ) : (
+            <div className="post-list">
+              {posts.map((post) => (
+                <PublicPostCard
+                  key={post.id}
+                  post={post}
+                  active={selectedPost?.id === post.id}
+                  onClick={() => onPost(post)}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
     </aside>
@@ -822,7 +890,11 @@ function MahalaMap({
         />
         {zones.map((zone) => {
           const selected = selectedZone?.id === zone.id;
-              const color = Number(zone.level) === 1 ? '#8b5cf6' : '#10b981';
+          const color = Number(zone.level) === 0
+            ? '#7c3aed'
+            : Number(zone.level) === 1
+              ? '#8b5cf6'
+              : '#10b981';
           return (
             <Polygon
               key={zone.id}
@@ -937,6 +1009,10 @@ export default function App() {
   const [page, setPage] = useState<Page>(() => getPageFromPath());
   const [mobileView, setMobileView] = useState<MobileView>('feed');
   const [zones, setZones] = useState<Zone[]>([]);
+  const sarajevoZones = useMemo(
+    () => (SARAJEVO_POLYGONS as Zone[]).map((zone) => ({ ...zone, level: 0 })),
+    [],
+  );
   const [topics, setTopics] = useState<Topic[]>(fallbackTopics);
   const [posts, setPosts] = useState<Post[]>([]);
   const [activeTopic, setActiveTopic] = useState('sve');
@@ -944,6 +1020,9 @@ export default function App() {
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
   const [userCoordinate, setUserCoordinate] = useState<Coordinate | null>(null);
+  const [currentMahalas, setCurrentMahalas] = useState<Zone[]>([]);
+  const [enabledMahalaIds, setEnabledMahalaIds] = useState<Set<string>>(() => new Set());
+  const mapZones = useMemo(() => [...sarajevoZones, ...zones], [sarajevoZones, zones]);
 
   const navigateToPage = (nextPage: Page) => {
     const nextPath = getPathForPage(nextPage);
@@ -989,10 +1068,7 @@ export default function App() {
         return;
       }
 
-      const resolvedZones = nextZones.length
-        ? nextZones
-        : (SARAJEVO_POLYGONS as Zone[]).slice(0, 26);
-      setZones(resolvedZones);
+      setZones(nextZones);
     };
 
     void loadMapData();
@@ -1002,14 +1078,14 @@ export default function App() {
     };
   }, []);
 
-  const loadFeedForLocation = useCallback(async (coordinate: Coordinate) => {
-    const feedMahalaIds = getNearbyMahalaIds(coordinate, zones);
+  const loadFeedForMahalaIds = useCallback(async (feedMahalaIds: string[]) => {
+    const resolvedIds = feedMahalaIds.length ? feedMahalaIds : DEFAULT_PUBLIC_MAHALA_IDS;
 
     const [postsResult, topicsResult] = await Promise.allSettled([
-      fetch(endpoints.feedForCurrentMahalas(feedMahalaIds, { limit: 14, sort: 'recent' }), {
+      fetch(endpoints.feedForCurrentMahalas(resolvedIds, { limit: 14, sort: 'recent' }), {
         headers: { Accept: 'application/json' },
       }).then((response) => response.json()),
-      fetch(endpoints.topicsForCurrentMahalas(feedMahalaIds), {
+      fetch(endpoints.topicsForCurrentMahalas(resolvedIds), {
         headers: { Accept: 'application/json' },
       }).then((response) => response.json()),
     ]);
@@ -1036,18 +1112,15 @@ export default function App() {
           })) as Topic[]
         : [];
 
-      setTopics([
-        {
-          id: 'sve',
-          name: 'Sve',
-          slug: 'sve',
-          count: nextTopics.reduce((sum, topic) => sum + topic.count, 0),
-        },
-        ...nextTopics,
-      ]);
+      setTopics(mergeTopicsWithGeneric(nextTopics));
       setActiveTopic('sve');
     }
-  }, [zones]);
+  }, []);
+
+  const loadFeedForLocation = useCallback(async (coordinate: Coordinate) => {
+    const feedMahalaIds = getNearbyMahalaIds(coordinate, sarajevoZones, zones);
+    await loadFeedForMahalaIds(feedMahalaIds);
+  }, [loadFeedForMahalaIds, sarajevoZones, zones]);
 
   const requestLocation = useCallback(() => {
     const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
@@ -1068,13 +1141,16 @@ export default function App() {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         };
-        const currentZone = zones.find((zone) => pointInPolygon(coordinate, zone.coordinates));
+        const nextCurrentMahalas = getCurrentMahalas(coordinate, sarajevoZones, zones);
+        const currentZone = nextCurrentMahalas.find((zone) => Number(zone.level) > 0) || nextCurrentMahalas[0];
         setUserCoordinate(coordinate);
+        setCurrentMahalas(nextCurrentMahalas);
+        setEnabledMahalaIds(new Set(nextCurrentMahalas.map((zone) => String(zone.id))));
         if (currentZone) {
           setSelectedZone(currentZone);
         }
         setLocationStatus('granted');
-        void loadFeedForLocation(coordinate);
+        void loadFeedForMahalaIds(nextCurrentMahalas.map((zone) => String(zone.id)));
       },
       (error) => {
         setLocationStatus(error.code === error.PERMISSION_DENIED ? 'denied' : 'error');
@@ -1085,7 +1161,26 @@ export default function App() {
         timeout: 12_000,
       },
     );
-  }, [loadFeedForLocation, zones]);
+  }, [loadFeedForMahalaIds, sarajevoZones, zones]);
+
+  const toggleCurrentMahala = useCallback((id: string) => {
+    setEnabledMahalaIds((current) => {
+      const next = new Set(current);
+
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+
+      const enabledIds = currentMahalas
+        .map((zone) => String(zone.id))
+        .filter((mahalaId) => next.has(mahalaId));
+      void loadFeedForMahalaIds(enabledIds);
+
+      return next;
+    });
+  }, [currentMahalas, loadFeedForMahalaIds]);
 
   const openLocationSettings = useCallback(() => {
     const candidates = [
@@ -1097,13 +1192,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (zones.length === 0 || locationStatus !== 'idle') {
+    if (sarajevoZones.length === 0 || locationStatus !== 'idle') {
       return undefined;
     }
 
     const timeout = window.setTimeout(requestLocation, 450);
     return () => window.clearTimeout(timeout);
-  }, [locationStatus, requestLocation, zones.length]);
+  }, [locationStatus, requestLocation, sarajevoZones.length]);
 
   const visiblePosts = useMemo(
     () => {
@@ -1124,10 +1219,10 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (!selectedZone && zones.length > 0) {
-      setSelectedZone(zones[0]);
+    if (!selectedZone && mapZones.length > 0) {
+      setSelectedZone(mapZones[0]);
     }
-  }, [selectedZone, zones]);
+  }, [mapZones, selectedZone]);
 
   const appBody = selectedPost ? (
     <PostDetail post={selectedPost} onBack={() => setSelectedPost(null)} />
@@ -1145,6 +1240,9 @@ export default function App() {
       locationStatus={locationStatus}
       onLocate={requestLocation}
       onOpenLocationSettings={openLocationSettings}
+      currentMahalas={currentMahalas}
+      enabledMahalaIds={enabledMahalaIds}
+      onToggleMahala={toggleCurrentMahala}
     />
   );
 
@@ -1164,7 +1262,7 @@ export default function App() {
         <div className="desktop-left">
           {appBody}
         </div>
-        <MahalaMap zones={zones} selectedZone={selectedZone} userCoordinate={userCoordinate} onZone={setSelectedZone} />
+        <MahalaMap zones={mapZones} selectedZone={selectedZone} userCoordinate={userCoordinate} onZone={setSelectedZone} />
         <aside className="desktop-right">
           <PublicTopicsPanel topics={topics} activeTopic={activeTopic} onTopic={setActiveTopic} />
         </aside>
@@ -1173,7 +1271,7 @@ export default function App() {
       <main className="mobile-layout">
         <div className="mobile-scroll">
           {mobileView === 'feed' ? appBody : null}
-          {mobileView === 'map' ? <MahalaMap zones={zones} selectedZone={selectedZone} userCoordinate={userCoordinate} onZone={setSelectedZone} /> : null}
+          {mobileView === 'map' ? <MahalaMap zones={mapZones} selectedZone={selectedZone} userCoordinate={userCoordinate} onZone={setSelectedZone} /> : null}
           {mobileView === 'topics' ? <PublicTopicsPanel topics={topics} activeTopic={activeTopic} onTopic={(topic) => { setActiveTopic(topic); setMobileView('feed'); }} /> : null}
           {mobileView === 'profile' ? (
             <section className="mobile-app-card">
