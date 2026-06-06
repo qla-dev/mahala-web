@@ -1,19 +1,9 @@
+import { useMemo, useState } from 'react';
 import {
-  Briefcase,
-  Calendar,
-  Eye,
-  Gamepad2,
-  Heart,
-  Megaphone,
-  MessageCircle,
-  Moon,
-  PawPrint,
   Search,
   Sparkles,
-  Tag,
-  Trophy,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { GENERAL_TOPIC_BADGE_COLOR, resolveTopicIcon, resolveTopicIconSize } from './topicIcons';
 
 type PublicTopic = {
   id: string;
@@ -27,41 +17,6 @@ type PublicTopic = {
   general?: boolean;
 };
 
-const topicIconMap: Record<string, LucideIcon> = {
-  'briefcase': Briefcase,
-  'calendar': Calendar,
-  'chatbubble-ellipses': MessageCircle,
-  'eye': Eye,
-  'football': Trophy,
-  'game-controller': Gamepad2,
-  'heart': Heart,
-  'megaphone': Megaphone,
-  'moon': Moon,
-  'paw': PawPrint,
-  'pricetag': Tag,
-  'search': Search,
-};
-
-const generalTopicIconMap: Record<string, string> = {
-  glavna: 'chatbubble-ellipses',
-  eventi: 'calendar',
-  spotted: 'eye',
-  posao: 'briefcase',
-  ljubimci: 'paw',
-  'izgubljeno-i-nadjeno': 'search',
-  politika: 'megaphone',
-  'nocna-smjena': 'moon',
-  gaming: 'game-controller',
-  sport: 'football',
-  'prodajem-i-kupujem': 'pricetag',
-  dating: 'heart',
-};
-
-function resolveTopicIcon(topic: PublicTopic) {
-  const iconKey = topic.icon || generalTopicIconMap[topic.slug] || 'chatbubble-ellipses';
-  return topicIconMap[iconKey] || MessageCircle;
-}
-
 export default function PublicTopicsPanel({
   topics,
   activeTopic,
@@ -71,6 +26,21 @@ export default function PublicTopicsPanel({
   activeTopic: string;
   onTopic: (id: string) => void;
 }) {
+  const [query, setQuery] = useState('');
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleTopics = useMemo(() => {
+    const source = topics.filter((topic) => topic.id !== 'sve');
+
+    if (!normalizedQuery) {
+      return source;
+    }
+
+    return source.filter((topic) => {
+      const searchableText = [topic.name, topic.slug, topic.description].filter(Boolean).join(' ').toLowerCase();
+      return searchableText.includes(normalizedQuery);
+    });
+  }, [normalizedQuery, topics]);
+
   return (
     <section className="public-topics-panel">
       <div className="public-topics-header">
@@ -80,8 +50,24 @@ export default function PublicTopicsPanel({
         </div>
         <Sparkles size={19} />
       </div>
+      <div className="public-topic-search-row">
+        <label className="public-topic-search-shell">
+          {!query ? <span>Pretrazi temu iz trenutnih MAHALA</span> : null}
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            autoCapitalize="none"
+            autoComplete="off"
+            autoCorrect="off"
+            aria-label="Pretrazi teme"
+          />
+        </label>
+      </div>
+      <p className="public-topic-section-label">
+        {query.trim() ? 'Rezultati pretrage' : 'Generalne teme iz trenutnih mahala'}
+      </p>
       <div className="public-topic-list">
-        {topics.filter((topic) => topic.id !== 'sve').map((topic) => (
+        {visibleTopics.map((topic) => (
           <TopicButton
             key={topic.id}
             topic={topic}
@@ -89,6 +75,12 @@ export default function PublicTopicsPanel({
             onClick={() => onTopic(topic.id)}
           />
         ))}
+        {visibleTopics.length === 0 ? (
+          <div className="public-topic-empty">
+            <strong>Nema tema za ovu pretragu</strong>
+            <span>Probaj drugi pojam</span>
+          </div>
+        ) : null}
       </div>
     </section>
   );
@@ -115,9 +107,9 @@ function TopicButton({
     >
       <span
         className={`public-topic-badge ${topic.general ? 'general' : ''}`}
-        style={{ backgroundColor: topic.color || '#8b5cf6' }}
+        style={{ backgroundColor: topic.general ? (topic.color || GENERAL_TOPIC_BADGE_COLOR) : (topic.color || '#8b5cf6') }}
       >
-        <Icon size={topic.slug === 'spotted' ? 21 : 19} />
+        <Icon size={resolveTopicIconSize(topic, 19)} />
       </span>
       <span className="public-topic-main">
         <span className="public-topic-title-row">

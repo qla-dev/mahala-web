@@ -17,7 +17,6 @@ import {
   ChevronUp,
   Compass,
   Download,
-  Flame,
   Heart,
   Home,
   MapPin,
@@ -26,15 +25,18 @@ import {
   Navigation,
   Search,
   Shield,
-  Smartphone,
   Sparkles,
 } from 'lucide-react';
 import endpoints from './api/endpoints';
 import { CurrentMahalasSheet } from './components/CurrentMahalasFilter';
+import { DownloadPrompt, StoreButtons } from './components/DownloadPrompt';
+import PostDetailScreen from './components/PostDetail';
 import PublicPostCard from './components/PublicPostCard';
 import PublicTopicsPanel from './components/PublicTopicsPanel';
+import TopicDetailPanel from './components/TopicDetail';
 import mahalaJumpLogo from './assets/mahalaJumpLogo.json';
 import { SARAJEVO_POLYGONS } from './data/sarajevoPolygons';
+import type { Post, Topic } from './types';
 
 // @ts-ignore
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -64,41 +66,15 @@ type Zone = {
   coordinates: Coordinate[];
   holes?: Coordinate[][];
 };
-type Topic = {
-  id: string;
-  name: string;
-  slug: string;
-  count: number;
-  color?: string;
-  description?: string;
-  icon?: string;
-  premium?: boolean;
-  general?: boolean;
-};
-type Post = {
-  id: string;
-  topicId: string;
-  topicName?: string;
-  author: string;
-  mahala: string;
-  content: string;
-  timeAgo: string;
-  votes: number;
-  upvotes: number;
-  downvotes: number;
-  comments: number;
-  color: string;
-  replies: Array<{
-    id: string;
-    author: string;
-    content: string;
-    votes: number;
-    comments: number;
-  }>;
-};
 type Page = 'app' | 'privacy' | 'terms' | 'cookies';
 type MobileView = 'feed' | 'map' | 'topics' | 'profile';
 type LocationStatus = 'idle' | 'locating' | 'granted' | 'denied' | 'unsupported' | 'error';
+type PageMeta = {
+  title: string;
+  description: string;
+  keywords: string;
+  path: string;
+};
 
 const DEFAULT_CENTER: [number, number] = [43.8563, 18.4131];
 const MOBILE_QUERY = '(max-width: 920px)';
@@ -108,34 +84,54 @@ const FEED_SORT_TABS = [
   { id: 'commented', label: 'Najkomentaranije objave' },
 ] as const;
 type FeedSort = typeof FEED_SORT_TABS[number]['id'];
-const storeLinks = {
-  ios: 'https://apps.apple.com/',
-  android: 'https://play.google.com/store',
-};
 const SARAJEVO_MAHALA_ZONE = {
   id: 'mahala-sarajevo',
   name: 'Sarajevo',
 };
 const SARAJEVO_TOPIC_SCOPE_ID = 'sarajevo-71000';
-
-function isSafariBrowser() {
-  const userAgent = window.navigator.userAgent;
-  return /Safari/i.test(userAgent) && !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|Android/i.test(userAgent);
-}
+const SITE_NAME = 'MAHALA';
+const SITE_ORIGIN = 'https://mahala.app';
+const OG_IMAGE_PATH = '/mahala.svg';
+const PAGE_META: Record<Page, PageMeta> = {
+  app: {
+    title: 'MAHALA - mapa i objave iz tvoje mahale',
+    description: 'MAHALA javni web pregled mapa, objava i tema iz tvoje mahale. Prati sta se desava u tvojoj blizini i preuzmi native aplikaciju.',
+    keywords: 'MAHALA, mahala app, Sarajevo, mapa mahala, lokalne objave, teme, komsiluk, Bosna i Hercegovina',
+    path: '/',
+  },
+  privacy: {
+    title: 'MAHALA - Politika privatnosti',
+    description: 'Procitaj kako MAHALA web i aplikacija pristupaju privatnosti, lokaciji, javnom sadrzaju i povezanim servisima.',
+    keywords: 'MAHALA privatnost, politika privatnosti, lokacija, podaci, aplikacija',
+    path: '/privacy',
+  },
+  terms: {
+    title: 'MAHALA - Uslovi koristenja',
+    description: 'Uslovi koristenja za MAHALA web pregled mapa, objava, tema i native aplikaciju.',
+    keywords: 'MAHALA uslovi, terms, pravila, korisnicki uslovi, aplikacija',
+    path: '/terms',
+  },
+  cookies: {
+    title: 'MAHALA - Politika kolacica',
+    description: 'Informacije o kolacicima i slicnim tehnologijama koje MAHALA web koristi za stabilnost, performanse i osnovne postavke.',
+    keywords: 'MAHALA kolacici, cookies, web tehnologije, privatnost',
+    path: '/cookies',
+  },
+};
 
 const fallbackTopics: Topic[] = [
-  { id: 'sve', name: 'sve', slug: 'sve', count: 0, color: '#8b5cf6', icon: 'chatbubble-ellipses', general: true },
-  { id: 'glavna', name: 'glavna', slug: 'glavna', count: 0, description: 'Glavni lokalni tok za sve oko tebe', color: '#7c3aed', icon: 'chatbubble-ellipses', premium: false },
-  { id: 'eventi', name: 'eventi', slug: 'eventi', count: 0, description: 'Desavanja, okupljanja, svirke i lokalni dogadjaji', color: '#ec4899', icon: 'calendar', premium: false },
-  { id: 'posao', name: 'posao', slug: 'posao', count: 0, description: 'Poslovi, smjene, preporuke i lokalne prilike za rad', color: '#06b6d4', icon: 'briefcase', premium: false },
-  { id: 'ljubimci', name: 'ljubimci', slug: 'ljubimci', count: 0, description: 'Ljubimci, parkovi, setnje i komsijske sapice', color: '#84cc16', icon: 'paw', premium: false },
-  { id: 'izgubljeno-i-nadjeno', name: 'izgubljeno_i_nadjeno', slug: 'izgubljeno-i-nadjeno', count: 0, description: 'Objave o izgubljenim stvarima, pronalascima i komsijskoj pomoci', color: '#fde047', icon: 'search', premium: false },
-  { id: 'politika', name: 'politika', slug: 'politika', count: 0, description: 'Vruce teme, lokalni pritisak i gradske price', color: '#dc2626', icon: 'megaphone', premium: false },
-  { id: 'nocna-smjena', name: 'nocna_smjena', slug: 'nocna-smjena', count: 0, description: 'Kasni satovi, nocne dojave i ekipa koja je jos budna', color: '#0b0a10', icon: 'moon', premium: false },
-  { id: 'gaming', name: 'gaming', slug: 'gaming', count: 0, description: 'Igre, ekipe, turniri i gejming dogovori', color: '#8b5e34', icon: 'game-controller', premium: false },
-  { id: 'sport', name: 'sport', slug: 'sport', count: 0, description: 'Utakmice, treninzi, rekreacija i lokalni sportski razgovori', color: '#ef4444', icon: 'football', premium: false },
-  { id: 'prodajem-i-kupujem', name: 'prodajem_i_kupujem', slug: 'prodajem-i-kupujem', count: 0, description: 'Kupovina, prodaja, razmjena i lokalne ponude', color: '#2dd4bf', icon: 'pricetag', premium: true },
-  { id: 'dating', name: 'dating', slug: 'dating', count: 0, description: 'Upoznavanje, izlasci i lokalne simpatije', color: '#ec4899', icon: 'heart', premium: true },
+  { id: 'sve', name: 'sve', slug: 'sve', count: 0, color: '#d1d5db', icon: 'chatbubble-ellipses', general: true },
+  { id: 'glavna', name: 'glavna', slug: 'glavna', count: 0, description: 'Glavni lokalni tok za sve oko tebe', color: '#d1d5db', icon: 'chatbubble-ellipses', premium: false, general: true },
+  { id: 'eventi', name: 'eventi', slug: 'eventi', count: 0, description: 'Desavanja, okupljanja, svirke i lokalni dogadjaji', color: '#d1d5db', icon: 'calendar', premium: false, general: true },
+  { id: 'posao', name: 'posao', slug: 'posao', count: 0, description: 'Poslovi, smjene, preporuke i lokalne prilike za rad', color: '#d1d5db', icon: 'briefcase', premium: false, general: true },
+  { id: 'ljubimci', name: 'ljubimci', slug: 'ljubimci', count: 0, description: 'Ljubimci, parkovi, setnje i komsijske sapice', color: '#d1d5db', icon: 'paw', premium: false, general: true },
+  { id: 'izgubljeno-i-nadjeno', name: 'izgubljeno_i_nadjeno', slug: 'izgubljeno-i-nadjeno', count: 0, description: 'Objave o izgubljenim stvarima, pronalascima i komsijskoj pomoci', color: '#d1d5db', icon: 'search', premium: false, general: true },
+  { id: 'politika', name: 'politika', slug: 'politika', count: 0, description: 'Vruce teme, lokalni pritisak i gradske price', color: '#d1d5db', icon: 'megaphone', premium: false, general: true },
+  { id: 'nocna-smjena', name: 'nocna_smjena', slug: 'nocna-smjena', count: 0, description: 'Kasni satovi, nocne dojave i ekipa koja je jos budna', color: '#d1d5db', icon: 'moon', premium: false, general: true },
+  { id: 'gaming', name: 'gaming', slug: 'gaming', count: 0, description: 'Igre, ekipe, turniri i gejming dogovori', color: '#d1d5db', icon: 'game-controller', premium: false, general: true },
+  { id: 'sport', name: 'sport', slug: 'sport', count: 0, description: 'Utakmice, treninzi, rekreacija i lokalni sportski razgovori', color: '#d1d5db', icon: 'football', premium: false, general: true },
+  { id: 'prodajem-i-kupujem', name: 'prodajem_i_kupujem', slug: 'prodajem-i-kupujem', count: 0, description: 'Kupovina, prodaja, razmjena i lokalne ponude', color: '#d1d5db', icon: 'pricetag', premium: true, general: true },
+  { id: 'dating', name: 'dating', slug: 'dating', count: 0, description: 'Upoznavanje, izlasci i lokalne simpatije', color: '#d1d5db', icon: 'heart', premium: true, general: true },
 ];
 
 const fallbackPosts: Post[] = [
@@ -267,6 +263,32 @@ function getPathForPage(page: Page) {
   }
 
   return `/${page}`;
+}
+
+function upsertMeta(selector: string, attributes: Record<string, string>) {
+  let element = document.head.querySelector<HTMLMetaElement>(selector);
+
+  if (!element) {
+    element = document.createElement('meta');
+    document.head.appendChild(element);
+  }
+
+  Object.entries(attributes).forEach(([name, value]) => {
+    element?.setAttribute(name, value);
+  });
+}
+
+function upsertLink(selector: string, attributes: Record<string, string>) {
+  let element = document.head.querySelector<HTMLLinkElement>(selector);
+
+  if (!element) {
+    element = document.createElement('link');
+    document.head.appendChild(element);
+  }
+
+  Object.entries(attributes).forEach(([name, value]) => {
+    element?.setAttribute(name, value);
+  });
 }
 
 function normalizeCoordinate(value: unknown): Coordinate | null {
@@ -487,7 +509,7 @@ function mergeTopicsWithGeneric(apiTopics: Topic[]) {
       id: genericTopic.id,
       name: genericTopic.name,
       slug: genericTopic.slug,
-      color: apiTopic?.color || genericTopic.color,
+      color: genericTopic.general ? genericTopic.color : (apiTopic?.color || genericTopic.color),
       description: genericTopic.description,
       icon: apiTopic?.icon || genericTopic.icon,
       premium: genericTopic.premium,
@@ -612,21 +634,6 @@ function UserLottieMarker({ coordinate }: { coordinate: Coordinate | null }) {
   }, []);
 
   return null;
-}
-
-function StoreButtons() {
-  return (
-    <div className="flex items-center gap-2">
-      <a className="store-button" href={storeLinks.ios} target="_blank" rel="noreferrer">
-        <Download size={15} />
-        App Store
-      </a>
-      <a className="store-button" href={storeLinks.android} target="_blank" rel="noreferrer">
-        <Download size={15} />
-        Google Play
-      </a>
-    </div>
-  );
 }
 
 function Header({
@@ -915,77 +922,6 @@ function FeedPanel({
   );
 }
 
-function PostDetail({
-  post,
-  onBack,
-}: {
-  post: Post;
-  onBack: () => void;
-}) {
-  return (
-    <section className="detail-panel">
-      <button type="button" className="back-button" onClick={onBack}>
-        <ChevronLeft size={18} />
-        Nazad na objave
-      </button>
-      <article className="detail-card">
-        <div className="detail-meta">
-          <span className="avatar large" style={{ background: post.color }}>{post.author[1]?.toUpperCase() || 'M'}</span>
-          <div>
-            <strong>{post.author}</strong>
-            <p>{post.mahala} · {post.timeAgo}</p>
-          </div>
-        </div>
-        <p className="detail-content">{post.content}</p>
-        <div className="post-stats">
-          <span><Heart size={15} /> {post.votes}</span>
-          <span><MessageCircle size={15} /> {post.comments}</span>
-        </div>
-      </article>
-      <h2>Komentari {post.comments}</h2>
-      <div className="reply-list">
-        {(post.replies.length ? post.replies : fallbackPosts[0].replies).map((reply) => (
-          <div className="reply-card" key={reply.id}>
-            <strong>{reply.author}</strong>
-            <p>{reply.content}</p>
-            <span><Heart size={14} /> {reply.votes} <MessageCircle size={14} /> {reply.comments}</span>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function TopicPanel({
-  topics,
-  activeTopic,
-  onTopic,
-}: {
-  topics: Topic[];
-  activeTopic: string;
-  onTopic: (id: string) => void;
-}) {
-  return (
-    <section className="topics-panel">
-      <h2>Teme u mahalama</h2>
-      <p>Prati price po temama i brzo nadji sta je trenutno bitno.</p>
-      <div className="topic-grid">
-        {topics.filter((topic) => topic.id !== 'sve').map((topic) => (
-          <button
-            key={topic.id}
-            className={activeTopic === topic.id ? 'active' : ''}
-            onClick={() => onTopic(topic.id)}
-          >
-            <Flame size={18} />
-            <span>{topic.name}</span>
-            <small>{topic.count} objava</small>
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function MahalaMap({
   zones,
   selectedZone,
@@ -1168,6 +1104,41 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const meta = PAGE_META[page];
+    const pageUrl = new URL(meta.path, window.location.origin || SITE_ORIGIN).toString();
+    const imageUrl = new URL(OG_IMAGE_PATH, window.location.origin || SITE_ORIGIN).toString();
+
+    document.title = meta.title;
+    document.documentElement.lang = 'bs';
+
+    upsertLink('link[rel="canonical"]', { rel: 'canonical', href: pageUrl });
+    upsertLink('link[rel="icon"][type="image/svg+xml"]', { rel: 'icon', type: 'image/svg+xml', href: '/mahala.svg' });
+    upsertLink('link[rel="apple-touch-icon"]', { rel: 'apple-touch-icon', href: '/mahala.svg' });
+
+    upsertMeta('meta[name="title"]', { name: 'title', content: meta.title });
+    upsertMeta('meta[name="description"]', { name: 'description', content: meta.description });
+    upsertMeta('meta[name="keywords"]', { name: 'keywords', content: meta.keywords });
+    upsertMeta('meta[name="author"]', { name: 'author', content: SITE_NAME });
+    upsertMeta('meta[name="robots"]', { name: 'robots', content: 'index, follow' });
+    upsertMeta('meta[name="theme-color"]', { name: 'theme-color', content: '#050508' });
+
+    upsertMeta('meta[property="og:type"]', { property: 'og:type', content: 'website' });
+    upsertMeta('meta[property="og:url"]', { property: 'og:url', content: pageUrl });
+    upsertMeta('meta[property="og:title"]', { property: 'og:title', content: meta.title });
+    upsertMeta('meta[property="og:description"]', { property: 'og:description', content: meta.description });
+    upsertMeta('meta[property="og:image"]', { property: 'og:image', content: imageUrl });
+    upsertMeta('meta[property="og:site_name"]', { property: 'og:site_name', content: SITE_NAME });
+    upsertMeta('meta[property="og:locale"]', { property: 'og:locale', content: 'bs_BA' });
+    upsertMeta('meta[property="og:locale:alternate"]', { property: 'og:locale:alternate', content: 'en_US' });
+
+    upsertMeta('meta[property="twitter:card"]', { property: 'twitter:card', content: 'summary_large_image' });
+    upsertMeta('meta[property="twitter:url"]', { property: 'twitter:url', content: pageUrl });
+    upsertMeta('meta[property="twitter:title"]', { property: 'twitter:title', content: meta.title });
+    upsertMeta('meta[property="twitter:description"]', { property: 'twitter:description', content: meta.description });
+    upsertMeta('meta[property="twitter:image"]', { property: 'twitter:image', content: imageUrl });
+  }, [page]);
+
+  useEffect(() => {
     let cancelled = false;
 
     const loadMapData = async () => {
@@ -1348,11 +1319,7 @@ export default function App() {
       return undefined;
     }
 
-    if (isSafariBrowser()) {
-      return undefined;
-    }
-
-    const timeout = window.setTimeout(requestLocation, 450);
+    const timeout = window.setTimeout(requestLocation, 0);
     return () => window.clearTimeout(timeout);
   }, [locationStatus, requestLocation, sarajevoZones.length]);
 
@@ -1417,7 +1384,11 @@ export default function App() {
   }, [currentMahalas.length, locationStatus, requestLocation]);
 
   const appBody = selectedPost ? (
-    <PostDetail post={selectedPost} onBack={() => setSelectedPost(null)} />
+    <PostDetailScreen
+      post={selectedPost}
+      fallbackReplies={fallbackPosts[0]?.replies || []}
+      onBack={() => setSelectedPost(null)}
+    />
   ) : (
     <FeedPanel
       topics={topics}
@@ -1455,7 +1426,7 @@ export default function App() {
         </div>
         <MahalaMap zones={mapZones} selectedZone={selectedZone} userCoordinate={userCoordinate} onZone={setSelectedZone} />
         <aside className="desktop-right">
-          <PublicTopicsPanel topics={topics} activeTopic={activeTopic} onTopic={setActiveTopic} />
+          <TopicDetailPanel topics={topics} activeTopic={activeTopic} onTopic={setActiveTopic} />
         </aside>
       </main>
       <CurrentMahalasSheet
@@ -1479,21 +1450,7 @@ export default function App() {
           {mobileView === 'feed' ? appBody : null}
           {mobileView === 'map' ? <MahalaMap zones={mapZones} selectedZone={selectedZone} userCoordinate={userCoordinate} onZone={setSelectedZone} /> : null}
           {mobileView === 'topics' ? <PublicTopicsPanel topics={topics} activeTopic={activeTopic} onTopic={(topic) => { setActiveTopic(topic); setMobileView('feed'); }} /> : null}
-          {mobileView === 'profile' ? (
-            <section className="mobile-app-card download-screen">
-              <span className="download-screen-icon">
-                <Smartphone size={34} />
-              </span>
-              <h1>MAHALA aplikacija</h1>
-              <p>Preuzmi native aplikaciju za objave, glasanje, notifikacije, Pro teme i punu MAHALA mapu.</p>
-              <div className="download-screen-highlights">
-                <span>Lokacija uzivo</span>
-                <span>Teme iz mahale</span>
-                <span>Brze notifikacije</span>
-              </div>
-              <StoreButtons />
-            </section>
-          ) : null}
+          {mobileView === 'profile' ? <DownloadPrompt className="mobile-app-card" /> : null}
         </div>
         <BottomNav active={mobileView} onChange={setMobileView} />
       </main>
