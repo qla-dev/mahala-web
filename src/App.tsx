@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, TouchEvent } from 'react';
 import {
   MapContainer,
   Polygon,
@@ -36,7 +36,7 @@ import PublicTopicsPanel from './components/PublicTopicsPanel';
 import TopicDetailPanel from './components/TopicDetail';
 import mahalaJumpLogo from './assets/mahalaJumpLogo.json';
 import { SARAJEVO_POLYGONS } from './data/sarajevoPolygons';
-import type { Post, Topic } from './types';
+import type { Post, PostReply, Topic } from './types';
 
 // @ts-ignore
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -84,11 +84,23 @@ const FEED_SORT_TABS = [
   { id: 'commented', label: 'Najkomentaranije objave' },
 ] as const;
 type FeedSort = typeof FEED_SORT_TABS[number]['id'];
+const FEED_PAGE_LIMIT = 14;
 const SARAJEVO_MAHALA_ZONE = {
   id: 'mahala-sarajevo',
   name: 'Sarajevo',
 };
 const SARAJEVO_TOPIC_SCOPE_ID = 'sarajevo-71000';
+const SARAJEVO_POLYGON_SCOPE_IDS = new Set([
+  '10863',
+  '11584',
+  '10847',
+  '11550',
+  '11568',
+  '10839',
+  '10871',
+  '10928',
+  '11592',
+]);
 const SITE_NAME = 'MAHALA';
 const SITE_ORIGIN = 'https://mahala.app';
 const OG_IMAGE_PATH = '/mahala.svg';
@@ -303,6 +315,44 @@ function normalizeCoordinate(value: unknown): Coordinate | null {
   return { latitude, longitude };
 }
 
+function formatTimeAgo(value: unknown) {
+  const date = value ? new Date(String(value)) : null;
+
+  if (!date || Number.isNaN(date.getTime())) {
+    return 'sada';
+  }
+
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+
+  if (diffSeconds < 60) {
+    return 'sada';
+  }
+
+  const diffMinutes = Math.floor(diffSeconds / 60);
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes} min`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+
+  if (diffHours < 24) {
+    return `${diffHours}h`;
+  }
+
+  return `${Math.floor(diffHours / 24)}d`;
+}
+
+function getTimestamp(value: unknown) {
+  const date = value ? new Date(String(value)) : null;
+
+  if (!date || Number.isNaN(date.getTime())) {
+    return 0;
+  }
+
+  return date.getTime();
+}
+
 function normalizeZone(value: unknown): Zone | null {
   const zone = value as Zone | undefined;
   const coordinates = Array.isArray(zone?.coordinates)
@@ -328,6 +378,37 @@ function normalizeZone(value: unknown): Zone | null {
   };
 }
 
+function normalizeComment(value: unknown): PostReply | null {
+  const comment = value as Record<string, unknown> | undefined;
+
+  if (!comment?.id) {
+    return null;
+  }
+
+  const upvotes = Number(comment.upvotes) || 0;
+  const downvotes = Number(comment.downvotes) || 0;
+  const score = Number(comment.score);
+  const parentId = comment.parent_id ? `api-comment-${comment.parent_id}` : null;
+
+  return {
+    id: `api-comment-${comment.id}`,
+    apiId: comment.id,
+    postApiId: comment.post_id,
+    parentId,
+    parentApiId: comment.parent_id ?? null,
+    authorUserId: comment.author_user_id ?? null,
+    author: comment.is_anonymous ? 'komsija' : String(comment.author_username || 'mahalac'),
+    content: String(comment.content || ''),
+    timeAgo: formatTimeAgo(comment.created_at),
+    votes: Number.isFinite(score) && score !== 0 ? score : upvotes - downvotes,
+    upvotes,
+    downvotes,
+    myVote: Number(comment.my_vote ?? comment.myVote) || 0,
+    isAnonymous: Boolean(comment.is_anonymous),
+    comments: Number(comment.replies_count || comment.comments_count || 0),
+  };
+}
+
 function normalizePost(value: unknown): Post | null {
   const post = value as Record<string, unknown> | undefined;
 
@@ -335,6 +416,16 @@ function normalizePost(value: unknown): Post | null {
     return null;
   }
 
+  const replies = Array.isArray(post.comments)
+    ? [...post.comments]
+        .sort((left, right) => {
+          const leftComment = left as Record<string, unknown> | undefined;
+          const rightComment = right as Record<string, unknown> | undefined;
+          return getTimestamp(rightComment?.created_at) - getTimestamp(leftComment?.created_at);
+        })
+        .map(normalizeComment)
+        .filter(Boolean) as PostReply[]
+    : [];
   const score = Number(post.score || 0);
   const upvotes = Number(post.upvotes ?? Math.max(score, 0));
   const downvotes = Number(post.downvotes ?? Math.max(-score, 0));
@@ -343,16 +434,17 @@ function normalizePost(value: unknown): Post | null {
     id: `api-post-${post.id}`,
     topicId: post.topic_id ? String(post.topic_id) : 'glavna',
     topicName: post.topic_name ? String(post.topic_name) : undefined,
+    mahalaId: post.mahala_id ? String(post.mahala_id) : null,
     author: post.is_anonymous ? 'komsija' : String(post.author_username || 'mahalac'),
     mahala: post.mahala_name ? String(post.mahala_name) : String(post.location || post.mahala_id || 'MAHALA'),
     content: String(post.content || ''),
-    timeAgo: String(post.time_ago || post.created_ago || 'sada'),
+    timeAgo: String(post.time_ago || post.created_ago || formatTimeAgo(post.created_at)),
     votes: score || upvotes - downvotes,
     upvotes,
     downvotes,
-    comments: Number(post.comments_count || post.comment_count || 0),
+    comments: Number(post.comments_count || post.comment_count || replies.length),
     color: String(post.topic_color || post.color_hex || '#8b5cf6'),
-    replies: [],
+    replies,
   };
 }
 
@@ -492,6 +584,38 @@ function getNearbyMahalaIds(coordinate: Coordinate, sarajevoZones: Zone[], userZ
   return matchingIds.length ? matchingIds.slice(0, 10) : DEFAULT_PUBLIC_MAHALA_IDS;
 }
 
+function getMahalaDisplayName(mahalaId: string | null | undefined, zones: Zone[]) {
+  if (!mahalaId) {
+    return 'MAHALA';
+  }
+
+  if (mahalaId === SARAJEVO_TOPIC_SCOPE_ID || mahalaId === SARAJEVO_MAHALA_ZONE.id) {
+    return SARAJEVO_MAHALA_ZONE.name;
+  }
+
+  const zone = zones.find((item) => {
+    const scopeId = getMahalaApiScopeId(item);
+    return String(item.id) === String(mahalaId) ||
+      String(item.officialId || '') === String(mahalaId) ||
+      String(item.scopeId || '') === String(mahalaId) ||
+      String(scopeId || '') === String(mahalaId);
+  });
+
+  return zone?.name || String(mahalaId);
+}
+
+function getMahalaTopicColor(mahalaId: string | null | undefined, zones: Zone[], fallbackColor?: string) {
+  if (mahalaId === SARAJEVO_TOPIC_SCOPE_ID || mahalaId === SARAJEVO_MAHALA_ZONE.id) {
+    return '#8b5cf6';
+  }
+
+  if (mahalaId && SARAJEVO_POLYGON_SCOPE_IDS.has(String(mahalaId))) {
+    return '#2563eb';
+  }
+
+  return fallbackColor || '#f59e0b';
+}
+
 function mergeTopicsWithGeneric(apiTopics: Topic[]) {
   const bySlugOrId = new Map<string, Topic>();
 
@@ -519,7 +643,11 @@ function mergeTopicsWithGeneric(apiTopics: Topic[]) {
   });
 
   const genericKeys = new Set(merged.flatMap((topic) => [topic.id, topic.slug]));
-  const customTopics = apiTopics.filter((topic) => !genericKeys.has(topic.id) && !genericKeys.has(topic.slug));
+  const customTopics = apiTopics.filter((topic) =>
+    !topic.general &&
+    !genericKeys.has(topic.id) &&
+    !genericKeys.has(topic.slug),
+  );
 
   const finalTopics = [...merged, ...customTopics];
   const totalCount = finalTopics
@@ -652,7 +780,7 @@ function Header({
   const [menuOpen, setMenuOpen] = useState(false);
   const locationLabel = (() => {
     if (locationStatus === 'locating') {
-      return 'Locira';
+      return 'Lociranje';
     }
 
     if (locationStatus === 'idle') {
@@ -817,6 +945,21 @@ function NativePostCard({
   );
 }
 
+const FEED_SKELETONS = Array.from({ length: 10 }, (_, index) => `feed-skeleton-${index}`);
+
+function FeedSkeletonCard({ compact = false }: { key?: string; compact?: boolean }) {
+  return (
+    <div className={`feed-skeleton-card ${compact ? 'compact' : ''}`}>
+      <div className="feed-skeleton-line meta" />
+      <div className="feed-skeleton-line title" />
+      <div className="feed-skeleton-footer">
+        <div className="feed-skeleton-pill" />
+        <div className="feed-skeleton-pill short" />
+      </div>
+    </div>
+  );
+}
+
 function FeedPanel({
   topics,
   activeTopic,
@@ -826,6 +969,12 @@ function FeedPanel({
   posts,
   selectedPost,
   onPost,
+  loading,
+  refreshing,
+  loadingMore,
+  hasMore,
+  onLoadMore,
+  onRefresh,
   locationStatus,
   onLocate,
   onOpenLocationSettings,
@@ -838,11 +987,71 @@ function FeedPanel({
   posts: Post[];
   selectedPost: Post | null;
   onPost: (post: Post) => void;
+  loading: boolean;
+  refreshing: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
+  onLoadMore: () => void;
+  onRefresh: () => void;
   locationStatus: LocationStatus;
   onLocate: () => void;
   onOpenLocationSettings: () => void;
 }) {
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const pullStartYRef = useRef<number | null>(null);
+  const loadMoreRequestedRef = useRef(false);
   const needsLocation = locationStatus !== 'granted';
+  useEffect(() => {
+    if (!loadingMore) {
+      loadMoreRequestedRef.current = false;
+    }
+  }, [loadingMore]);
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeSort]);
+  const handleListScroll = () => {
+    const list = listRef.current;
+    if (!list || loading || loadingMore || !hasMore || loadMoreRequestedRef.current) {
+      return;
+    }
+
+    const distanceFromBottom = list.scrollHeight - (list.scrollTop + list.clientHeight);
+    if (distanceFromBottom <= 240) {
+      loadMoreRequestedRef.current = true;
+      onLoadMore();
+    }
+  };
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const list = listRef.current;
+    if (!list || list.scrollTop > 2 || loading || refreshing) {
+      pullStartYRef.current = null;
+      return;
+    }
+
+    pullStartYRef.current = event.touches[0]?.clientY ?? null;
+  };
+  const handleTouchMove = (event: TouchEvent<HTMLDivElement>) => {
+    if (pullStartYRef.current == null) {
+      return;
+    }
+
+    const delta = (event.touches[0]?.clientY ?? 0) - pullStartYRef.current;
+    if (delta > 10) {
+      event.preventDefault();
+    }
+  };
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    if (pullStartYRef.current == null) {
+      return;
+    }
+
+    const delta = (event.changedTouches[0]?.clientY ?? 0) - pullStartYRef.current;
+    pullStartYRef.current = null;
+
+    if (delta >= 70) {
+      onRefresh();
+    }
+  };
   const locationCopy = (() => {
     if (locationStatus === 'unsupported') {
       return {
@@ -898,14 +1107,25 @@ function FeedPanel({
       ) : (
         <>
           <FeedSortTabs activeSort={activeSort} onSort={onSort} />
-          {posts.length === 0 ? (
+          <div
+            ref={listRef}
+            className="post-list"
+            onScroll={handleListScroll}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {refreshing ? <div className="feed-refresh-indicator">Osvjezavanje...</div> : null}
+            {loading ? (
+              FEED_SKELETONS.map((item) => <FeedSkeletonCard key={item} />)
+            ) : posts.length === 0 ? (
             <div className="feed-empty-state compact">
               <LottieBox className="feed-empty-lottie" />
               <h2>Nema objava u blizini</h2>
               <p>Kada se pojave nove objave ili teme u tvojim trenutnim mahalama, prikazat ce se ovdje.</p>
             </div>
           ) : (
-            <div className="post-list">
+            <>
               {posts.map((post) => (
                 <PublicPostCard
                   key={post.id}
@@ -914,8 +1134,11 @@ function FeedPanel({
                   onClick={() => onPost(post)}
                 />
               ))}
-            </div>
+              {loadingMore ? FEED_SKELETONS.slice(0, 2).map((item) => <FeedSkeletonCard key={`more-${item}`} compact />) : null}
+              {!loadingMore && !hasMore ? <div className="feed-end-label">Nema vise objava</div> : null}
+            </>
           )}
+          </div>
         </>
       )}
     </aside>
@@ -1067,6 +1290,12 @@ export default function App() {
   );
   const [topics, setTopics] = useState<Topic[]>(fallbackTopics);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [feedLoading, setFeedLoading] = useState(true);
+  const [feedRefreshing, setFeedRefreshing] = useState(false);
+  const [feedLoadingMore, setFeedLoadingMore] = useState(false);
+  const [feedHasMore, setFeedHasMore] = useState(false);
+  const [feedPage, setFeedPage] = useState(1);
+  const [activeFeedMahalaIds, setActiveFeedMahalaIds] = useState<string[]>(DEFAULT_PUBLIC_MAHALA_IDS);
   const [activeTopic, setActiveTopic] = useState('sve');
   const [feedSort, setFeedSort] = useState<FeedSort>('recent');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -1170,50 +1399,89 @@ export default function App() {
     };
   }, []);
 
-  const loadFeedForMahalaIds = useCallback(async (feedMahalaIds: string[], sort: FeedSort = feedSort) => {
+  const normalizeTopicPayload = useCallback((topic: any): Topic => {
+    const mahalaId = topic.mahala_id != null ? String(topic.mahala_id) : null;
+    const topicColor = topic.color || topic.color_hex || topic.topic_color || undefined;
+    const isGeneral = Boolean(topic.general || topic.is_system);
+
+    return {
+      id: String(topic.id ?? topic.slug ?? topic.name),
+      name: String(topic.name ?? topic.slug ?? 'Tema'),
+      slug: String(topic.slug ?? topic.id ?? topic.name),
+      count: Number(topic.posts_count ?? topic.count ?? 0),
+      color: isGeneral ? '#d1d5db' : getMahalaTopicColor(mahalaId, mapZones, topicColor ? String(topicColor) : undefined),
+      description: topic.description ? String(topic.description) : undefined,
+      icon: topic.icon ? String(topic.icon) : undefined,
+      mahalaId,
+      location: getMahalaDisplayName(mahalaId, mapZones),
+      premium: Boolean(topic.premium || topic.is_premium),
+      general: isGeneral,
+    };
+  }, [mapZones]);
+
+  const loadFeedForMahalaIds = useCallback(async (
+    feedMahalaIds: string[],
+    sort: FeedSort = feedSort,
+    options: { page?: number; append?: boolean; refresh?: boolean; includeTopics?: boolean } = {},
+  ) => {
     const requestId = feedRequestIdRef.current + 1;
     feedRequestIdRef.current = requestId;
     const resolvedIds = [...new Set(feedMahalaIds.length ? feedMahalaIds : DEFAULT_PUBLIC_MAHALA_IDS)];
+    const page = options.page ?? 1;
+    const append = Boolean(options.append);
+    const includeTopics = options.includeTopics ?? page === 1;
 
-    const [postsResult, topicsResult] = await Promise.allSettled([
-      fetch(endpoints.feedForCurrentMahalas(resolvedIds, { limit: 14, sort }), {
+    setActiveFeedMahalaIds(resolvedIds);
+    if (append) {
+      setFeedLoadingMore(true);
+    } else if (options.refresh) {
+      setFeedRefreshing(true);
+    } else {
+      setFeedLoading(true);
+    }
+
+    try {
+      const postsPromise = fetch(endpoints.feedForCurrentMahalas(resolvedIds, { limit: FEED_PAGE_LIMIT, page, sort }), {
         headers: { Accept: 'application/json' },
-      }).then((response) => response.json()),
-      fetch(endpoints.topicsForCurrentMahalas(resolvedIds), {
-        headers: { Accept: 'application/json' },
-      }).then((response) => response.json()),
-    ]);
+      }).then((response) => response.json());
+      const topicsPromise = includeTopics
+        ? fetch(endpoints.topicsForCurrentMahalas(resolvedIds), {
+            headers: { Accept: 'application/json' },
+          }).then((response) => response.json())
+        : Promise.resolve(null);
+      const [postsPayload, topicsPayload] = await Promise.all([postsPromise, topicsPromise]);
 
-    if (requestId !== feedRequestIdRef.current) {
-      return;
-    }
+      if (requestId !== feedRequestIdRef.current) {
+        return;
+      }
 
-    if (postsResult.status === 'fulfilled') {
-      const nextPosts = Array.isArray(postsResult.value?.data)
-        ? postsResult.value.data.map(normalizePost).filter(Boolean) as Post[]
+      const normalizedPosts = Array.isArray(postsPayload?.data)
+        ? postsPayload.data.map(normalizePost).filter(Boolean) as Post[]
         : [];
-      setPosts(nextPosts);
-    }
+      const nextPosts = normalizedPosts.map((post) => ({
+        ...post,
+        mahala: getMahalaDisplayName(post.mahalaId, mapZones),
+        color: getMahalaTopicColor(post.mahalaId, mapZones, post.color),
+      }));
+      setPosts((current) => append ? [...current, ...nextPosts.filter((post) => !current.some((item) => item.id === post.id))] : nextPosts);
+      setFeedPage(Number(postsPayload?.meta?.page ?? page));
+      setFeedHasMore(Boolean(postsPayload?.meta?.has_more));
 
-    if (topicsResult.status === 'fulfilled') {
-      const nextTopics = Array.isArray(topicsResult.value?.data)
-        ? topicsResult.value.data.map((topic: any) => ({
-            id: String(topic.id ?? topic.slug ?? topic.name),
-            name: String(topic.name ?? topic.slug ?? 'Tema'),
-            slug: String(topic.slug ?? topic.id ?? topic.name),
-            count: Number(topic.posts_count ?? topic.count ?? 0),
-            color: String(topic.color || topic.color_hex || topic.topic_color || '#8b5cf6'),
-            description: topic.description ? String(topic.description) : undefined,
-            icon: topic.icon ? String(topic.icon) : undefined,
-            premium: Boolean(topic.premium),
-            general: Boolean(topic.general),
-          })) as Topic[]
-        : [];
-
-      setTopics(mergeTopicsWithGeneric(nextTopics));
-      setActiveTopic('sve');
+      if (includeTopics && topicsPayload) {
+        const nextTopics = Array.isArray(topicsPayload?.data)
+          ? topicsPayload.data.map(normalizeTopicPayload)
+          : [];
+        setTopics(mergeTopicsWithGeneric(nextTopics));
+        setActiveTopic('sve');
+      }
+    } finally {
+      if (requestId === feedRequestIdRef.current) {
+        setFeedLoading(false);
+        setFeedRefreshing(false);
+        setFeedLoadingMore(false);
+      }
     }
-  }, [feedSort]);
+  }, [feedSort, mapZones, normalizeTopicPayload]);
 
   useEffect(() => {
     void loadFeedForMahalaIds(DEFAULT_PUBLIC_MAHALA_IDS, feedSort);
@@ -1305,6 +1573,22 @@ export default function App() {
     void loadFeedForMahalaIds(enabledIds.length ? enabledIds : DEFAULT_PUBLIC_MAHALA_IDS, nextSort);
   }, [currentMahalas, enabledMahalaIds, loadFeedForMahalaIds]);
 
+  const refreshFeed = useCallback(() => {
+    void loadFeedForMahalaIds(activeFeedMahalaIds, feedSort, { page: 1, refresh: true });
+  }, [activeFeedMahalaIds, feedSort, loadFeedForMahalaIds]);
+
+  const loadMoreFeed = useCallback(() => {
+    if (feedLoading || feedRefreshing || feedLoadingMore || !feedHasMore) {
+      return;
+    }
+
+    void loadFeedForMahalaIds(activeFeedMahalaIds, feedSort, {
+      page: feedPage + 1,
+      append: true,
+      includeTopics: false,
+    });
+  }, [activeFeedMahalaIds, feedHasMore, feedLoading, feedLoadingMore, feedPage, feedRefreshing, feedSort, loadFeedForMahalaIds]);
+
   const openLocationSettings = useCallback(() => {
     const candidates = [
       'App-Prefs:SAFARI',
@@ -1386,7 +1670,6 @@ export default function App() {
   const appBody = selectedPost ? (
     <PostDetailScreen
       post={selectedPost}
-      fallbackReplies={fallbackPosts[0]?.replies || []}
       onBack={() => setSelectedPost(null)}
     />
   ) : (
@@ -1402,6 +1685,12 @@ export default function App() {
       posts={visiblePosts}
       selectedPost={selectedPost}
       onPost={(post) => setSelectedPost(post)}
+      loading={feedLoading}
+      refreshing={feedRefreshing}
+      loadingMore={feedLoadingMore}
+      hasMore={feedHasMore}
+      onLoadMore={loadMoreFeed}
+      onRefresh={refreshFeed}
       locationStatus={locationStatus}
       onLocate={requestLocation}
       onOpenLocationSettings={openLocationSettings}
@@ -1446,7 +1735,7 @@ export default function App() {
       />
 
       <main className="mobile-layout">
-        <div className="mobile-scroll">
+        <div className={`mobile-scroll ${mobileView === 'map' ? 'map-mobile-scroll' : ''}`}>
           {mobileView === 'feed' ? appBody : null}
           {mobileView === 'map' ? <MahalaMap zones={mapZones} selectedZone={selectedZone} userCoordinate={userCoordinate} onZone={setSelectedZone} /> : null}
           {mobileView === 'topics' ? <PublicTopicsPanel topics={topics} activeTopic={activeTopic} onTopic={(topic) => { setActiveTopic(topic); setMobileView('feed'); }} /> : null}

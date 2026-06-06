@@ -3,71 +3,101 @@ import {
   Search,
   Sparkles,
 } from 'lucide-react';
+import type { Topic } from '../types';
 import { GENERAL_TOPIC_BADGE_COLOR, resolveTopicIcon, resolveTopicIconSize } from './topicIcons';
-
-type PublicTopic = {
-  id: string;
-  name: string;
-  slug: string;
-  count: number;
-  color?: string;
-  description?: string;
-  icon?: string;
-  premium?: boolean;
-  general?: boolean;
-};
 
 export default function PublicTopicsPanel({
   topics,
   activeTopic,
   onTopic,
 }: {
-  topics: PublicTopic[];
+  topics: Topic[];
   activeTopic: string;
   onTopic: (id: string) => void;
 }) {
   const [query, setQuery] = useState('');
   const normalizedQuery = query.trim().toLowerCase();
-  const visibleTopics = useMemo(() => {
+  const { generalTopics, currentMahalaTopics } = useMemo(() => {
     const source = topics.filter((topic) => topic.id !== 'sve');
-
-    if (!normalizedQuery) {
-      return source;
-    }
-
-    return source.filter((topic) => {
+    const visibleTopics = normalizedQuery ? source.filter((topic) => {
       const searchableText = [topic.name, topic.slug, topic.description].filter(Boolean).join(' ').toLowerCase();
       return searchableText.includes(normalizedQuery);
-    });
+    }) : source;
+
+    return {
+      generalTopics: visibleTopics.filter((topic) => topic.general),
+      currentMahalaTopics: visibleTopics.filter((topic) => !topic.general),
+    };
   }, [normalizedQuery, topics]);
+  const hasSearchQuery = Boolean(query.trim());
+  const isEmpty = generalTopics.length === 0 && currentMahalaTopics.length === 0;
 
   return (
     <section className="public-topics-panel">
-      <div className="public-topics-header">
-        <div>
-          <p>Teme</p>
-          <h2>Sta se prica u blizini</h2>
+      <div className="public-topics-topbar">
+        <div className="public-topics-header">
+          <div>
+            <p>Teme</p>
+            <h2>Sta se prica u blizini</h2>
+          </div>
+          <Sparkles size={19} />
         </div>
-        <Sparkles size={19} />
+        <div className="public-topic-search-row">
+          <label className="public-topic-search-shell">
+            {!query ? <span>Pretrazi temu iz trenutnih MAHALA</span> : null}
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              autoCapitalize="none"
+              autoComplete="off"
+              autoCorrect="off"
+              aria-label="Pretrazi teme"
+            />
+          </label>
+        </div>
       </div>
-      <div className="public-topic-search-row">
-        <label className="public-topic-search-shell">
-          {!query ? <span>Pretrazi temu iz trenutnih MAHALA</span> : null}
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            autoCapitalize="none"
-            autoComplete="off"
-            autoCorrect="off"
-            aria-label="Pretrazi teme"
-          />
-        </label>
-      </div>
-      <p className="public-topic-section-label">
-        {query.trim() ? 'Rezultati pretrage' : 'Generalne teme iz trenutnih mahala'}
-      </p>
+      <TopicSection
+        title={hasSearchQuery ? 'Rezultati pretrage' : 'Generalne teme'}
+        topics={generalTopics}
+        activeTopic={activeTopic}
+        onTopic={onTopic}
+      />
+      <TopicSection
+        title={hasSearchQuery ? 'Rezultati iz trenutnih mahala' : 'Teme iz trenutnih mahala'}
+        topics={currentMahalaTopics}
+        activeTopic={activeTopic}
+        onTopic={onTopic}
+      />
+      {isEmpty ? (
+        <div className="public-topic-empty">
+          <strong>Nema tema za ovu pretragu</strong>
+          <span>Probaj drugi pojam</span>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function TopicSection({
+  title,
+  topics,
+  activeTopic,
+  onTopic,
+}: {
+  title: string;
+  topics: Topic[];
+  activeTopic: string;
+  onTopic: (id: string) => void;
+}) {
+  if (topics.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      <p className="public-topic-section-label">{title}</p>
       <div className="public-topic-list">
-        {visibleTopics.map((topic) => (
+        {topics.map((topic) => (
           <TopicButton
             key={topic.id}
             topic={topic}
@@ -75,14 +105,8 @@ export default function PublicTopicsPanel({
             onClick={() => onTopic(topic.id)}
           />
         ))}
-        {visibleTopics.length === 0 ? (
-          <div className="public-topic-empty">
-            <strong>Nema tema za ovu pretragu</strong>
-            <span>Probaj drugi pojam</span>
-          </div>
-        ) : null}
       </div>
-    </section>
+    </>
   );
 }
 
@@ -92,7 +116,7 @@ function TopicButton({
   onClick,
 }: {
   key?: string;
-  topic: PublicTopic;
+  topic: Topic;
   active: boolean;
   onClick: () => void;
 }) {

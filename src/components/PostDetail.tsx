@@ -1,27 +1,25 @@
 import { useState } from 'react';
 import {
+  Bell,
   ChevronDown,
   ChevronLeft,
   ChevronUp,
   MessageCircle,
-  Shield,
 } from 'lucide-react';
 import type { Post, PostReply } from '../types';
 import { DownloadGateModal } from './DownloadPrompt';
 
 export default function PostDetail({
   post,
-  fallbackReplies = [],
   onBack,
 }: {
   post: Post;
-  fallbackReplies?: PostReply[];
   onBack: () => void;
 }) {
   const [downloadGateOpen, setDownloadGateOpen] = useState(false);
-  const replies = post.replies.length ? post.replies : fallbackReplies;
+  const replies = post.replies;
   const openDownloadGate = () => setDownloadGateOpen(true);
-  const authorInitial = post.author.replace('@', '').trim()[0]?.toUpperCase() || 'M';
+  const author = post.author.startsWith('@') ? post.author : `@${post.author}`;
 
   return (
     <section className="detail-panel">
@@ -32,15 +30,21 @@ export default function PostDetail({
 
       <article className="detail-hero-card" style={{ backgroundColor: post.color }}>
         <div className="detail-hero-meta">
-          <span className="avatar large detail-avatar">{authorInitial}</span>
-          <div>
-            <strong>{post.author}</strong>
-            <p>{post.mahala} &middot; {post.timeAgo}</p>
-          </div>
+          <span>{post.mahala}</span>
+          <span>-</span>
+          <span>{author}</span>
+          <span>-</span>
+          <span>{post.timeAgo}</span>
         </div>
 
-        <span className="detail-hero-topic">{post.topicName || post.topicId}</span>
         <p className="detail-hero-content">{post.content}</p>
+
+        <div className="detail-action-row">
+          <button type="button" className="detail-action-pill" onClick={openDownloadGate}>
+            <Bell size={13} />
+            Drot
+          </button>
+        </div>
 
         <div className="detail-vote-rail" aria-label="Glasanje">
           <button type="button" className="detail-vote-badge" onClick={openDownloadGate}>
@@ -52,28 +56,17 @@ export default function PostDetail({
             <ChevronDown size={18} />
           </button>
         </div>
-
-        <div className="detail-action-row">
-          <button type="button" className="detail-action-pill" onClick={openDownloadGate}>
-            <MessageCircle size={15} />
-            {post.comments} komentara
-          </button>
-          <button type="button" className="detail-action-pill" onClick={openDownloadGate}>
-            <Shield size={15} />
-            Drot
-          </button>
-        </div>
       </article>
 
-      <h2 className="detail-section-label">Komentari {post.comments}</h2>
+      <h2 className="detail-section-label">Komentari</h2>
       <div className="reply-list">
         {replies.map((reply) => (
-          <article className="reply-card" key={reply.id}>
+          <article className={`reply-card${reply.parentId ? ' child' : ''}`} key={reply.id}>
             <div className="reply-main">
               <strong>{reply.author}</strong>
               <p>{reply.content}</p>
               <div className="reply-footer">
-                <span>{post.mahala}</span>
+                <span>{reply.timeAgo || post.mahala}</span>
                 <button type="button" onClick={openDownloadGate}>Odgovori</button>
                 <span><MessageCircle size={13} /> {reply.comments}</span>
               </div>
@@ -89,12 +82,19 @@ export default function PostDetail({
             </div>
           </article>
         ))}
+        {replies.length === 0 && (
+          <div className="reply-empty-state">
+            Ova objava nema komentara. Budi prvi koji ce pokrenuti diskusiju.
+          </div>
+        )}
       </div>
 
-      <button type="button" className="detail-composer-gate" onClick={openDownloadGate}>
-        <MessageCircle size={17} />
-        Komentarisi u aplikaciji
-      </button>
+      <div className="detail-composer-bar">
+        <button type="button" className="detail-composer-gate" onClick={openDownloadGate}>
+          <MessageCircle size={17} />
+          Komentarisi u aplikaciji
+        </button>
+      </div>
 
       <DownloadGateModal open={downloadGateOpen} onClose={() => setDownloadGateOpen(false)} />
     </section>
