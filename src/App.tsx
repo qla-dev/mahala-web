@@ -15,17 +15,19 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronUp,
-  Compass,
   Download,
   Heart,
   Home,
   MapPin,
   Menu,
   MessageCircle,
+  Moon,
   Navigation,
+  Satellite,
   Search,
   Shield,
   Sparkles,
+  Sun,
 } from 'lucide-react';
 import endpoints from './api/endpoints';
 import { CurrentMahalasSheet } from './components/CurrentMahalasFilter';
@@ -69,6 +71,8 @@ type Zone = {
 type Page = 'app' | 'privacy' | 'terms' | 'cookies';
 type MobileView = 'feed' | 'map' | 'topics' | 'profile';
 type LocationStatus = 'idle' | 'locating' | 'granted' | 'denied' | 'unsupported' | 'error';
+type MapType = 'dark' | 'light' | 'satellite';
+type MapCommand = { id: number; type: 'near' | 'far' } | null;
 type PageMeta = {
   title: string;
   description: string;
@@ -85,6 +89,11 @@ const FEED_SORT_TABS = [
 ] as const;
 type FeedSort = typeof FEED_SORT_TABS[number]['id'];
 const FEED_PAGE_LIMIT = 14;
+const MAP_TILESETS: Record<MapType, string> = {
+  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+};
 const SARAJEVO_MAHALA_ZONE = {
   id: 'mahala-sarajevo',
   name: 'Sarajevo',
@@ -696,6 +705,27 @@ function FitZone({ zone }: { zone: Zone | null }) {
   return null;
 }
 
+function MapCommandController({
+  command,
+  userCoordinate,
+}: {
+  command: MapCommand;
+  userCoordinate: Coordinate | null;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!command || !userCoordinate) {
+      return;
+    }
+
+    const zoom = command.type === 'near' ? 16 : 13;
+    map.setView([userCoordinate.latitude, userCoordinate.longitude], Math.max(map.getZoom(), zoom), { animate: true });
+  }, [command, map, userCoordinate]);
+
+  return null;
+}
+
 function UserLottieMarker({ coordinate }: { coordinate: Coordinate | null }) {
   const map = useMap();
   const markerRef = useRef<L.Marker | null>(null);
@@ -767,13 +797,13 @@ function UserLottieMarker({ coordinate }: { coordinate: Coordinate | null }) {
 function Header({
   page,
   onPage,
-  selectedZone,
+  primaryMahala,
   locationStatus,
   onLocationPress,
 }: {
   page: Page;
   onPage: (page: Page) => void;
-  selectedZone: Zone | null;
+  primaryMahala: Zone | null;
   locationStatus: LocationStatus;
   onLocationPress: () => void;
 }) {
@@ -791,7 +821,7 @@ function Header({
       return 'Lokacije nedostupna';
     }
 
-    return selectedZone?.name || 'Lokacije nedostupna';
+    return primaryMahala?.name || 'Lokacije nedostupna';
   })();
   const menuItems: Array<{ page: Page; label: string }> = [
     { page: 'privacy', label: 'Privatnost' },
@@ -1156,12 +1186,22 @@ function MahalaMap({
   userCoordinate: Coordinate | null;
   onZone: (zone: Zone) => void;
 }) {
+  const [mapType, setMapType] = useState<MapType>('dark');
+  const [mapCommand, setMapCommand] = useState<MapCommand>(null);
+  const triggerLocate = (type: 'near' | 'far') => {
+    if (!userCoordinate) {
+      return;
+    }
+
+    setMapCommand({ id: Date.now(), type });
+  };
+
   return (
     <div className="map-shell">
       <MapContainer center={DEFAULT_CENTER} zoom={12} minZoom={8} className="map-view" zoomControl={false}>
         <TileLayer
           attribution="&copy; OpenStreetMap contributors &copy; CARTO"
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          url={MAP_TILESETS[mapType]}
         />
         {zones.map((zone) => {
           const selected = selectedZone?.id === zone.id;
@@ -1187,14 +1227,27 @@ function MahalaMap({
           );
         })}
         <UserLottieMarker coordinate={userCoordinate} />
+        <MapCommandController command={mapCommand} userCoordinate={userCoordinate} />
         <FitZone zone={selectedZone} />
       </MapContainer>
-      <div className="map-badge">
-        <Compass size={16} />
-        <span>
-          {selectedZone?.name || 'Interaktivna mapa mahala'}
-          {selectedZone?.name ? <small>Odabrana MAHALA</small> : null}
-        </span>
+      <div className="map-controls map-controls-left" aria-label="Tip mape">
+        <button type="button" className={mapType === 'dark' ? 'active' : ''} aria-label="Tamna mapa" onClick={() => setMapType('dark')}>
+          <Moon size={17} />
+        </button>
+        <button type="button" className={mapType === 'light' ? 'active' : ''} aria-label="Svijetla mapa" onClick={() => setMapType('light')}>
+          <Sun size={17} />
+        </button>
+        <button type="button" className={mapType === 'satellite' ? 'active' : ''} aria-label="Satelitska mapa" onClick={() => setMapType('satellite')}>
+          <Satellite size={17} />
+        </button>
+      </div>
+      <div className="map-controls map-controls-right" aria-label="Lokacija">
+        <button type="button" disabled={!userCoordinate} aria-label="Lociraj sire" onClick={() => triggerLocate('far')}>
+          <Search size={17} />
+        </button>
+        <button type="button" disabled={!userCoordinate} aria-label="Lociraj blize" onClick={() => triggerLocate('near')}>
+          <Navigation size={17} />
+        </button>
       </div>
     </div>
   );
@@ -1700,7 +1753,7 @@ export default function App() {
   if (page !== 'app') {
     return (
       <div className="app-shell legal-shell">
-        <Header page={page} onPage={navigateToPage} selectedZone={selectedZone} locationStatus={locationStatus} onLocationPress={handleLocationPress} />
+        <Header page={page} onPage={navigateToPage} primaryMahala={currentMahalas[0] || null} locationStatus={locationStatus} onLocationPress={handleLocationPress} />
         <LegalPage page={page} onBack={() => navigateToPage('app')} />
       </div>
     );
@@ -1708,7 +1761,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Header page={page} onPage={navigateToPage} selectedZone={selectedZone} locationStatus={locationStatus} onLocationPress={handleLocationPress} />
+      <Header page={page} onPage={navigateToPage} primaryMahala={currentMahalas[0] || null} locationStatus={locationStatus} onLocationPress={handleLocationPress} />
       <main className="desktop-layout">
         <div className="desktop-left">
           {appBody}
