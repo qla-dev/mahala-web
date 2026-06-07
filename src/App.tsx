@@ -35,6 +35,7 @@ import {
 import endpoints from './api/endpoints';
 import { CurrentMahalasSheet } from './components/CurrentMahalasFilter';
 import { DownloadPrompt, StoreButtons } from './components/DownloadPrompt';
+import LottieBox from './components/LottieBox';
 import PostDetailScreen from './components/PostDetail';
 import PublicPostCard from './components/PublicPostCard';
 import PublicTopicsPanel from './components/PublicTopicsPanel';
@@ -689,28 +690,6 @@ function mergeTopicsWithGeneric(apiTopics: Topic[]) {
   return finalTopics.map((topic) => topic.id === 'sve' ? { ...topic, count: totalCount } : topic);
 }
 
-function LottieBox({ className }: { className: string }) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) {
-      return undefined;
-    }
-
-    const animation = lottie.loadAnimation({
-      animationData: mahalaJumpLogo,
-      autoplay: true,
-      container: containerRef.current,
-      loop: true,
-      renderer: 'svg',
-    });
-
-    return () => animation.destroy();
-  }, []);
-
-  return <div className={className} ref={containerRef} />;
-}
-
 function FitZone({ zone }: { zone: Zone | null }) {
   const map = useMap();
 
@@ -1016,6 +995,8 @@ function NativePostCard({
   onClick: () => void;
 }) {
   const author = post.author.startsWith('@') ? post.author : `@${post.author}`;
+  const rawTopic = post.topicName || post.topicId;
+  const topic = rawTopic.startsWith('@') ? rawTopic : `@${rawTopic}`;
 
   return (
     <button
@@ -1031,7 +1012,7 @@ function NativePostCard({
         <span>-</span>
         <span>{post.timeAgo}</span>
       </span>
-      <span className="post-topic-pill">{post.topicName || post.topicId}</span>
+      <span className="post-topic-pill">{topic}</span>
       <span className="post-content">{post.content}</span>
       <span className="post-footer">
         <span className="post-action-pill">
@@ -1858,7 +1839,7 @@ export default function App() {
   const openTopicScreen = useCallback((topicId: string) => {
     setSelectedPost(null);
     setSelectedTopicId(topicId);
-    setMobileView('feed');
+    setMobileView('topics');
   }, []);
   const openFeedScreen = useCallback(() => {
     setSelectedPost(null);
@@ -1950,7 +1931,9 @@ export default function App() {
         <div className={`mobile-scroll ${mobileView === 'map' ? 'map-mobile-scroll' : ''}`}>
           {mobileView === 'feed' ? appBody : null}
           {mobileView === 'map' ? <MahalaMap zones={mapZones} selectedZone={selectedZone} userCoordinate={userCoordinate} onZone={setSelectedZone} /> : null}
-          {mobileView === 'topics' ? <PublicTopicsPanel topics={topics} activeTopic={selectedTopicId || ''} onTopic={openTopicScreen} /> : null}
+          {mobileView === 'topics' ? (
+            selectedTopic ? appBody : <PublicTopicsPanel topics={topics} activeTopic={selectedTopicId || ''} onTopic={openTopicScreen} />
+          ) : null}
           {mobileView === 'profile' ? <DownloadPrompt className="mobile-app-card" /> : null}
         </div>
         <BottomNav active={mobileView} onChange={handleMobileViewChange} />

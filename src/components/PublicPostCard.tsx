@@ -34,6 +34,9 @@ export default function PublicPostCard({
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [downloadGateOpen, setDownloadGateOpen] = useState(false);
   const author = post.author.startsWith('@') ? post.author : `@${post.author}`;
+  const rawTopic = post.topicName || post.topicId;
+  const topic = rawTopic.startsWith('@') ? rawTopic : `@${rawTopic}`;
+  const hasContent = post.content.trim().length > 0;
   const isImagePost = Boolean(post.isImage && post.imageUri);
   const openImagePreview = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -69,11 +72,11 @@ export default function PublicPostCard({
       <span className="public-post-meta">
         <span>{post.mahala}</span>
         <span>-</span>
-        <span>{post.topicName || post.topicId}</span>
+        <span>{topic}</span>
         <span>-</span>
         <span>{post.timeAgo}</span>
       </span>
-      <span className="public-post-content"><strong>{author}</strong> {post.content}</span>
+      <span className="public-post-content"><strong>{author}{hasContent ? ' kaže' : ''}</strong>{hasContent ? ` ${post.content}` : ''}</span>
         <span className="public-post-footer">
           <button type="button" className="public-post-pill" onClick={(event) => event.stopPropagation()}>
             <MessageCircle size={13} />

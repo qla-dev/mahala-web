@@ -10,6 +10,7 @@ import {
 import type { Post, PostReply } from '../types';
 import { DownloadGateModal } from './DownloadPrompt';
 import ImagePreviewOverlay from './ImagePreviewOverlay';
+import LottieBox from './LottieBox';
 import PublicVoteRail from './PublicVoteRail';
 
 export default function PostDetail({
@@ -24,6 +25,9 @@ export default function PostDetail({
   const replies = post.replies;
   const openDownloadGate = () => setDownloadGateOpen(true);
   const author = post.author.startsWith('@') ? post.author : `@${post.author}`;
+  const rawTopic = post.topicName || post.topicId;
+  const topic = rawTopic.startsWith('@') ? rawTopic : `@${rawTopic}`;
+  const hasContent = post.content.trim().length > 0;
   const isImagePost = Boolean(post.isImage && post.imageUri);
 
   return (
@@ -52,12 +56,12 @@ export default function PostDetail({
           <div className="detail-hero-meta">
             <span>{post.mahala}</span>
             <span>-</span>
-            <span>{post.topicName || post.topicId}</span>
+            <span>{topic}</span>
             <span>-</span>
             <span>{post.timeAgo}</span>
           </div>
 
-          <p className="detail-hero-content"><strong>{author}</strong> {post.content}</p>
+          <p className="detail-hero-content"><strong>{author}{hasContent ? ' kaže' : ''}</strong>{hasContent ? ` ${post.content}` : ''}</p>
 
           <div className="detail-action-row">
             <button type="button" className="detail-action-pill" onClick={openDownloadGate}>
@@ -100,8 +104,10 @@ export default function PostDetail({
             </article>
           ))}
           {replies.length === 0 && (
-            <div className="reply-empty-state">
-              Ova objava nema komentara. Budi prvi koji ce pokrenuti diskusiju.
+            <div className="feed-empty-state compact reply-empty-state">
+              <LottieBox className="feed-empty-lottie" />
+              <h2>Nema komentara</h2>
+              <p>Ova objava nema komentara. Budi prvi koji ce pokrenuti diskusiju.</p>
             </div>
           )}
         </div>
