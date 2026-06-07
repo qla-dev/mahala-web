@@ -370,6 +370,18 @@ function getTimestamp(value: unknown) {
   return date.getTime();
 }
 
+function normalizeImageUri(value: unknown) {
+  if (!value) {
+    return null;
+  }
+
+  const imageUri = String(value);
+  const uploadsIndex = imageUri.indexOf('/uploads/posts/');
+  const normalizedPath = uploadsIndex >= 0 ? imageUri.slice(uploadsIndex) : imageUri;
+
+  return endpoints.mediaUrl(normalizedPath);
+}
+
 function normalizeZone(value: unknown): Zone | null {
   const zone = value as Zone | undefined;
   const coordinates = Array.isArray(zone?.coordinates)
@@ -446,6 +458,7 @@ function normalizePost(value: unknown): Post | null {
   const score = Number(post.score || 0);
   const upvotes = Number(post.upvotes ?? Math.max(score, 0));
   const downvotes = Number(post.downvotes ?? Math.max(-score, 0));
+  const imageUri = normalizeImageUri(post.image_uri);
 
   return {
     id: `api-post-${post.id}`,
@@ -461,6 +474,8 @@ function normalizePost(value: unknown): Post | null {
     downvotes,
     comments: Number(post.comments_count || post.comment_count || replies.length),
     color: String(post.topic_color || post.color_hex || '#8b5cf6'),
+    isImage: imageUri != null,
+    imageUri,
     replies,
   };
 }

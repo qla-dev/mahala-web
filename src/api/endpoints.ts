@@ -4,8 +4,28 @@ const env = (import.meta as ImportMeta & {
 
 const defaultBaseUrl = 'https://api.mahala.app/public/api';
 const baseUrl = ((env?.VITE_MAHALA_DB_BASE_URL || defaultBaseUrl) ?? '').replace(/\/+$/, '');
+const publicBaseUrl = baseUrl.replace(/\/api$/, '');
+
+const mediaUrl = (path: string | null | undefined) => {
+  const value = String(path || '');
+
+  if (!value) {
+    return null;
+  }
+
+  const uploadsIndex = value.indexOf('/uploads/posts/');
+  const normalizedValue = uploadsIndex >= 0 ? value.slice(uploadsIndex) : value;
+
+  if (uploadsIndex < 0 && /^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  return `${publicBaseUrl.replace(/\/+$/, '')}/${normalizedValue.replace(/^\/+/, '')}`;
+};
 
 const endpoints = {
+  publicBase: publicBaseUrl,
+  mediaUrl,
   mahalas: `${baseUrl}/mahalas`,
   feedForCurrentMahalas: (
     mahalaIds: string[],

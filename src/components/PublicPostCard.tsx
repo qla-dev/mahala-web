@@ -12,6 +12,8 @@ type PublicPost = {
   downvotes: number;
   comments: number;
   color: string;
+  isImage?: boolean;
+  imageUri?: string | null;
 };
 
 export default function PublicPostCard({
@@ -25,14 +27,22 @@ export default function PublicPostCard({
   onClick: () => void;
 }) {
   const author = post.author.startsWith('@') ? post.author : `@${post.author}`;
+  const isImagePost = Boolean(post.isImage && post.imageUri);
 
   return (
     <button
       type="button"
-      className={`public-post-card ${active ? 'active' : ''}`}
-      style={{ backgroundColor: post.color }}
+      className={`public-post-card ${isImagePost ? 'image-post' : ''} ${active ? 'active' : ''}`}
+      style={isImagePost ? undefined : { backgroundColor: post.color }}
       onClick={onClick}
     >
+      {isImagePost ? (
+        <span
+          aria-hidden="true"
+          className="public-post-image-bg"
+          style={{ backgroundImage: `url("${post.imageUri}")` }}
+        />
+      ) : null}
       <span className="public-post-meta">
         <span>{post.mahala}</span>
         <span>-</span>

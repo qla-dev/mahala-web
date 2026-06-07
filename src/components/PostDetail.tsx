@@ -4,7 +4,9 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronUp,
+  Eye,
   MessageCircle,
+  X,
 } from 'lucide-react';
 import type { Post, PostReply } from '../types';
 import { DownloadGateModal } from './DownloadPrompt';
@@ -17,9 +19,11 @@ export default function PostDetail({
   onBack: () => void;
 }) {
   const [downloadGateOpen, setDownloadGateOpen] = useState(false);
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const replies = post.replies;
   const openDownloadGate = () => setDownloadGateOpen(true);
   const author = post.author.startsWith('@') ? post.author : `@${post.author}`;
+  const isImagePost = Boolean(post.isImage && post.imageUri);
 
   return (
     <section className="detail-panel">
@@ -28,7 +32,19 @@ export default function PostDetail({
         Nazad na objave
       </button>
 
-      <article className="detail-hero-card" style={{ backgroundColor: post.color }}>
+      <article
+        className={`detail-hero-card ${isImagePost ? 'image-post' : ''}`}
+        style={isImagePost ? undefined : { backgroundColor: post.color }}
+      >
+        {isImagePost ? (
+          <button
+            type="button"
+            className="detail-hero-image-bg"
+            style={{ backgroundImage: `url("${post.imageUri}")` }}
+            onClick={() => setImagePreviewOpen(true)}
+            aria-label="Otvori sliku"
+          />
+        ) : null}
         <div className="detail-hero-meta">
           <span>{post.mahala}</span>
           <span>-</span>
@@ -44,6 +60,12 @@ export default function PostDetail({
             <Bell size={13} />
             Drot
           </button>
+          {isImagePost ? (
+            <button type="button" className="detail-action-pill" onClick={() => setImagePreviewOpen(true)}>
+              <Eye size={13} />
+              Pogledaj sliku
+            </button>
+          ) : null}
         </div>
 
         <div className="detail-vote-rail" aria-label="Glasanje">
@@ -97,6 +119,15 @@ export default function PostDetail({
       </div>
 
       <DownloadGateModal open={downloadGateOpen} onClose={() => setDownloadGateOpen(false)} />
+      {isImagePost && imagePreviewOpen ? (
+        <div className="image-preview-layer" role="dialog" aria-modal="true">
+          <button type="button" className="image-preview-backdrop" onClick={() => setImagePreviewOpen(false)} aria-label="Zatvori sliku" />
+          <img src={post.imageUri || ''} alt="" className="image-preview-img" />
+          <button type="button" className="image-preview-close" onClick={() => setImagePreviewOpen(false)} aria-label="Zatvori sliku">
+            <X size={20} />
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

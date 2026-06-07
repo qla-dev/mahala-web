@@ -44,5 +44,7 @@ export type Post = {
   downvotes: number;
   comments: number;
   color: string;
+  isImage?: boolean;
+  imageUri?: string | null;
   replies: PostReply[];
 };
