@@ -2,9 +2,9 @@ const env = (import.meta as ImportMeta & {
   env?: Record<string, string | undefined>;
 }).env;
 
-const defaultBaseUrl = 'https://api.mahala.app/public/api';
-const baseUrl = ((env?.VITE_MAHALA_DB_BASE_URL || defaultBaseUrl) ?? '').replace(/\/+$/, '');
-const publicBaseUrl = baseUrl.replace(/\/api$/, '');
+const defaultPublicUrl = 'https://api.mahala.app/public';
+const PUBLIC_URL = ((env?.VITE_MAHALA_PUBLIC_URL || defaultPublicUrl) ?? '').replace(/\/+$/, '');
+const BASE_URL = `${PUBLIC_URL}/api`;
 
 const mediaUrl = (path: string | null | undefined) => {
   const value = String(path || '');
@@ -20,13 +20,13 @@ const mediaUrl = (path: string | null | undefined) => {
     return value;
   }
 
-  return `${publicBaseUrl.replace(/\/+$/, '')}/${normalizedValue.replace(/^\/+/, '')}`;
+  return `${PUBLIC_URL}/${normalizedValue.replace(/^\/+/, '')}`;
 };
 
 const endpoints = {
-  publicBase: publicBaseUrl,
+  publicBase: PUBLIC_URL,
   mediaUrl,
-  mahalas: `${baseUrl}/mahalas`,
+  mahalas: `${BASE_URL}/mahalas`,
   feedForCurrentMahalas: (
     mahalaIds: string[],
     params: { limit?: number; page?: number; sort?: string } = {},
@@ -41,11 +41,11 @@ const endpoints = {
       query.push(`page=${encodeURIComponent(String(params.page))}`);
     }
 
-    return `${baseUrl}/feed?${query.join('&')}`;
+    return `${BASE_URL}/feed?${query.join('&')}`;
   },
-  topicsPreview: `${baseUrl}/topics`,
+  topicsPreview: `${BASE_URL}/topics`,
   topicsForCurrentMahalas: (mahalaIds: string[]) =>
-    `${baseUrl}/topics/current-mahalas?mahala_ids=${encodeURIComponent(mahalaIds.join(','))}`,
+    `${BASE_URL}/topics/current-mahalas?mahala_ids=${encodeURIComponent(mahalaIds.join(','))}`,
 };
 
 export default endpoints;
