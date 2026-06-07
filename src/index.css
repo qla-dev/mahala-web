@@ -1065,21 +1065,17 @@ button {
   position: relative;
   z-index: 2;
   display: flex;
-  min-width: 0;
   align-items: center;
   flex-wrap: nowrap;
   gap: 10px;
   margin-top: auto;
-  overflow: hidden;
 }
 
 .public-post-pill {
   display: inline-flex;
-  min-width: 0;
   min-height: 34px;
   align-items: center;
   gap: 6px;
-  flex: 0 1 auto;
   border: 0;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.18);
@@ -1088,8 +1084,6 @@ button {
   font-size: 10px;
   font-weight: 950;
   line-height: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -2056,12 +2050,12 @@ button {
   }
 
   .app-header.has-mobile-store-banner {
-    --mobile-header-height: 132px;
+    --mobile-header-height: 122px;
     justify-content: flex-start;
   }
 
   .app-header.has-mobile-store-banner ~ .mobile-layout {
-    --mobile-header-height: 132px;
+    --mobile-header-height: 122px;
   }
 
   .app-header-row {
@@ -2130,7 +2124,7 @@ button {
     background: #000;
     overflow: hidden;
     overscroll-behavior-y: contain;
-    padding: 8px 6px 0;
+    padding: 0 6px;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
   }
