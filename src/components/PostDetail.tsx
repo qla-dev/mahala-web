@@ -31,7 +31,7 @@ export default function PostDetail({
       <div className="detail-topbar">
         <button type="button" className="back-button" onClick={onBack}>
           <ChevronLeft size={18} />
-          Nazad na objave
+          Nazad
         </button>
       </div>
 

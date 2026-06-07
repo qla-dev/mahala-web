@@ -1073,9 +1073,6 @@ function FeedSkeletonCard({ compact = false }: { key?: string; compact?: boolean
 }
 
 function FeedPanel({
-  topics,
-  activeTopic,
-  onTopic,
   activeSort,
   onSort,
   posts,
@@ -1091,9 +1088,6 @@ function FeedPanel({
   onLocate,
   onOpenLocationSettings,
 }: {
-  topics: Topic[];
-  activeTopic: string;
-  onTopic: (id: string) => void;
   activeSort: FeedSort;
   onSort: (sort: FeedSort) => void;
   posts: Post[];
@@ -1254,6 +1248,75 @@ function FeedPanel({
         </>
       )}
     </aside>
+  );
+}
+
+function postBelongsToTopic(post: Post, topic: Topic) {
+  const acceptedTopicKeys = new Set([
+    topic.id,
+    topic.slug,
+    topic.name,
+  ].filter(Boolean).map((value) => String(value).replace(/^@/, '')));
+  const postTopicKeys = [
+    post.topicId,
+    post.topicName,
+  ].filter(Boolean).map((value) => String(value).replace(/^@/, ''));
+
+  return postTopicKeys.some((key) => acceptedTopicKeys.has(key));
+}
+
+function TopicFeedScreen({
+  topic,
+  posts,
+  selectedPost,
+  onPost,
+  onBack,
+}: {
+  topic: Topic;
+  posts: Post[];
+  selectedPost: Post | null;
+  onPost: (post: Post) => void;
+  onBack: () => void;
+}) {
+  const label = topic.slug || topic.name;
+
+  return (
+    <section className="detail-panel topic-screen">
+      <div className="detail-topbar">
+        <button type="button" className="back-button" onClick={onBack}>
+          <ChevronLeft size={18} />
+          Nazad
+        </button>
+      </div>
+      <div className="detail-scroll">
+        <article className="topic-screen-hero">
+          <div className="topic-screen-copy">
+            <span>{topic.general ? 'Generalna tema' : 'Tema iz trenutnih mahala'}</span>
+            <h1>@{label}</h1>
+            <p>{topic.description || `${posts.length} objava u ovoj temi`}</p>
+          </div>
+        </article>
+
+        <div className="topic-screen-posts">
+          {posts.length === 0 ? (
+            <div className="feed-empty-state compact">
+              <LottieBox className="feed-empty-lottie" />
+              <h2>Nema objava u ovoj temi</h2>
+              <p>Kada se pojave nove objave za @{label}, prikazat ce se ovdje.</p>
+            </div>
+          ) : (
+            posts.map((post) => (
+              <PublicPostCard
+                key={post.id}
+                post={post}
+                active={selectedPost?.id === post.id}
+                onClick={() => onPost(post)}
+              />
+            ))
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -1431,7 +1494,7 @@ export default function App() {
   const [feedHasMore, setFeedHasMore] = useState(false);
   const [feedPage, setFeedPage] = useState(1);
   const [activeFeedMahalaIds, setActiveFeedMahalaIds] = useState<string[]>(DEFAULT_PUBLIC_MAHALA_IDS);
-  const [activeTopic, setActiveTopic] = useState('sve');
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [feedSort, setFeedSort] = useState<FeedSort>('recent');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
@@ -1607,7 +1670,7 @@ export default function App() {
           ? topicsPayload.data.map(normalizeTopicPayload)
           : [];
         setTopics(mergeTopicsWithGeneric(nextTopics));
-        setActiveTopic('sve');
+        setSelectedTopicId(null);
       }
     } finally {
       if (requestId === feedRequestIdRef.current) {
@@ -1769,22 +1832,13 @@ export default function App() {
     }
   }, [lastLocatedCoordinate, sarajevoZones, zones]);
 
-  const visiblePosts = useMemo(
-    () => {
-      const activeTopicMeta = topics.find((topic) => topic.id === activeTopic);
-      const acceptedTopicKeys = new Set([
-        activeTopic,
-        activeTopicMeta?.slug,
-        activeTopicMeta?.name,
-      ].filter(Boolean).map(String));
-
-      return posts.filter((post) =>
-        activeTopic === 'sve' ||
-        acceptedTopicKeys.has(String(post.topicId)) ||
-        acceptedTopicKeys.has(String(post.topicId).replace(/^@/, '')),
-      );
-    },
-    [activeTopic, posts, topics],
+  const selectedTopic = useMemo(
+    () => topics.find((topic) => topic.id === selectedTopicId) || null,
+    [selectedTopicId, topics],
+  );
+  const selectedTopicPosts = useMemo(
+    () => selectedTopic ? posts.filter((post) => postBelongsToTopic(post, selectedTopic)) : [],
+    [posts, selectedTopic],
   );
 
   useEffect(() => {
@@ -1801,23 +1855,45 @@ export default function App() {
 
     requestLocation();
   }, [currentMahalas.length, locationStatus, requestLocation]);
+  const openTopicScreen = useCallback((topicId: string) => {
+    setSelectedPost(null);
+    setSelectedTopicId(topicId);
+    setMobileView('feed');
+  }, []);
+  const openFeedScreen = useCallback(() => {
+    setSelectedPost(null);
+    setSelectedTopicId(null);
+    setMobileView('feed');
+  }, []);
+  const handleMobileViewChange = useCallback((view: MobileView) => {
+    if (view === 'feed') {
+      setSelectedPost(null);
+      setSelectedTopicId(null);
+    }
+    setMobileView(view);
+  }, []);
 
   const appBody = selectedPost ? (
     <PostDetailScreen
       post={selectedPost}
       onBack={() => setSelectedPost(null)}
     />
+  ) : selectedTopic ? (
+    <TopicFeedScreen
+      topic={selectedTopic}
+      posts={selectedTopicPosts}
+      selectedPost={selectedPost}
+      onPost={(post) => setSelectedPost(post)}
+      onBack={() => {
+        setSelectedTopicId(null);
+        setMobileView('topics');
+      }}
+    />
   ) : (
     <FeedPanel
-      topics={topics}
-      activeTopic={activeTopic}
-      onTopic={(topic) => {
-        setActiveTopic(topic);
-        setMobileView('feed');
-      }}
       activeSort={feedSort}
       onSort={changeFeedSort}
-      posts={visiblePosts}
+      posts={posts}
       selectedPost={selectedPost}
       onPost={(post) => setSelectedPost(post)}
       loading={feedLoading}
@@ -1850,7 +1926,7 @@ export default function App() {
         </div>
         <MahalaMap zones={mapZones} selectedZone={selectedZone} userCoordinate={userCoordinate} onZone={setSelectedZone} />
         <aside className="desktop-right">
-          <TopicDetailPanel topics={topics} activeTopic={activeTopic} onTopic={setActiveTopic} />
+          <TopicDetailPanel topics={topics} activeTopic={selectedTopicId || ''} onTopic={openTopicScreen} />
         </aside>
       </main>
       <CurrentMahalasSheet
@@ -1860,10 +1936,11 @@ export default function App() {
         onToggle={toggleCurrentMahala}
         onOpenFeed={() => {
           setCurrentMahalasSheetOpen(false);
-          setMobileView('feed');
+          openFeedScreen();
         }}
         onOpenTopics={() => {
           setCurrentMahalasSheetOpen(false);
+          setSelectedTopicId(null);
           setMobileView('topics');
         }}
         onClose={() => setCurrentMahalasSheetOpen(false)}
@@ -1873,10 +1950,10 @@ export default function App() {
         <div className={`mobile-scroll ${mobileView === 'map' ? 'map-mobile-scroll' : ''}`}>
           {mobileView === 'feed' ? appBody : null}
           {mobileView === 'map' ? <MahalaMap zones={mapZones} selectedZone={selectedZone} userCoordinate={userCoordinate} onZone={setSelectedZone} /> : null}
-          {mobileView === 'topics' ? <PublicTopicsPanel topics={topics} activeTopic={activeTopic} onTopic={(topic) => { setActiveTopic(topic); setMobileView('feed'); }} /> : null}
+          {mobileView === 'topics' ? <PublicTopicsPanel topics={topics} activeTopic={selectedTopicId || ''} onTopic={openTopicScreen} /> : null}
           {mobileView === 'profile' ? <DownloadPrompt className="mobile-app-card" /> : null}
         </div>
-        <BottomNav active={mobileView} onChange={setMobileView} />
+        <BottomNav active={mobileView} onChange={handleMobileViewChange} />
       </main>
     </div>
   );

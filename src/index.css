@@ -1045,7 +1045,7 @@ button {
   position: relative;
   z-index: 2;
   display: -webkit-box;
-  margin-top: 12px;
+  margin-top: 0;
   overflow: hidden;
   color: var(--text);
   font-size: 22px;
@@ -1073,14 +1073,13 @@ button {
 
 .public-post-pill {
   display: inline-flex;
-  min-height: 34px;
   align-items: center;
   gap: 6px;
   border: 0;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.18);
   color: var(--text);
-  padding: 0 12px;
+  padding: 6px 12px;
   font-size: 10px;
   font-weight: 950;
   line-height: 1;
@@ -1133,35 +1132,66 @@ button {
   flex-direction: column;
   min-height: 228px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px;
   padding: 20px 66px 20px 20px;
   background: #8b5cf6;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3);
-}
-
-.detail-hero-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 42%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.28));
-  pointer-events: none;
 }
 
 .detail-hero-card.image-post {
   background: #050505;
 }
 
+.topic-screen-hero {
+  overflow: hidden;
+  border-radius: 24px;
+  background: #15151a;
+  padding: 18px;
+  color: #fff;
+  margin-bottom: 16px;
+}
+
+.topic-screen .detail-topbar {
+  padding-bottom: 4px;
+}
+
+.topic-screen-copy {
+  min-width: 0;
+}
+
+.topic-screen-copy span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.topic-screen-copy h1 {
+  margin: 5px 0 8px;
+  overflow: hidden;
+  font-size: 22px;
+  line-height: 1.15;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topic-screen-copy p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+}
+
+.topic-screen-posts {
+  display: grid;
+  gap: 0;
+}
+
 .detail-hero-image-bg {
   border: 0;
   cursor: zoom-in;
-}
-
-.detail-hero-card.image-post::before {
-  z-index: 1;
-  background: rgba(0, 0, 0, 0.34);
 }
 
 .detail-hero-meta,
@@ -2028,6 +2058,16 @@ button {
 
 .legal-list p {
   margin: 0;
+}
+
+@media (min-width: 921px) {
+  .detail-topbar {
+    padding-top: 12px;
+  }
+
+  .legal-page > .back-button {
+    margin-top: 12px;
+  }
 }
 
 @media (max-width: 920px) {
