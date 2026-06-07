@@ -1,4 +1,7 @@
-import { Bell, ChevronDown, ChevronUp, MessageCircle } from 'lucide-react';
+import { useState } from 'react';
+import type { MouseEvent } from 'react';
+import { Bell, Eye, MessageCircle, X } from 'lucide-react';
+import PublicVoteRail from './PublicVoteRail';
 
 type PublicPost = {
   id: string;
@@ -26,52 +29,76 @@ export default function PublicPostCard({
   active: boolean;
   onClick: () => void;
 }) {
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const author = post.author.startsWith('@') ? post.author : `@${post.author}`;
   const isImagePost = Boolean(post.isImage && post.imageUri);
+  const openImagePreview = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setImagePreviewOpen(true);
+  };
 
   return (
-    <button
-      type="button"
-      className={`public-post-card ${isImagePost ? 'image-post' : ''} ${active ? 'active' : ''}`}
-      style={isImagePost ? undefined : { backgroundColor: post.color }}
-      onClick={onClick}
-    >
-      {isImagePost ? (
-        <span
-          aria-hidden="true"
-          className="public-post-image-bg"
-          style={{ backgroundImage: `url("${post.imageUri}")` }}
+    <>
+      <article
+        className={`public-post-card ${isImagePost ? 'image-post' : ''} ${active ? 'active' : ''}`}
+        style={isImagePost ? undefined : { backgroundColor: post.color }}
+        onClick={onClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onClick();
+          }
+        }}
+      >
+        {isImagePost ? (
+          <span
+            aria-hidden="true"
+            className="public-post-image-bg"
+            style={{ backgroundImage: `url("${post.imageUri}")` }}
+          />
+        ) : null}
+        <span className="public-post-meta">
+          <span>{post.mahala}</span>
+          <span>-</span>
+          <span>{author}</span>
+          <span>-</span>
+          <span>{post.timeAgo}</span>
+        </span>
+        <span className="public-post-topic">{post.topicName || post.topicId}</span>
+        <span className="public-post-content">{post.content}</span>
+        <span className="public-post-footer">
+          <button type="button" className="public-post-pill" onClick={(event) => event.stopPropagation()}>
+            <MessageCircle size={13} />
+            {post.comments} komentara
+          </button>
+          <button type="button" className="public-post-pill" onClick={(event) => event.stopPropagation()}>
+            <Bell size={13} />
+            Drot
+          </button>
+          {isImagePost ? (
+            <button type="button" className="public-post-pill" onClick={openImagePreview}>
+              <Eye size={13} />
+              Pogledaj sliku
+            </button>
+          ) : null}
+        </span>
+        <PublicVoteRail
+          upvotes={post.upvotes}
+          downvotes={post.downvotes}
+          onClick={(event) => event.stopPropagation()}
         />
+      </article>
+      {isImagePost && imagePreviewOpen ? (
+        <div className="image-preview-layer" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+          <button type="button" className="image-preview-backdrop" onClick={() => setImagePreviewOpen(false)} aria-label="Zatvori sliku" />
+          <img src={post.imageUri || ''} alt="" className="image-preview-img" />
+          <button type="button" className="image-preview-close" onClick={() => setImagePreviewOpen(false)} aria-label="Zatvori sliku">
+            <X size={20} />
+          </button>
+        </div>
       ) : null}
-      <span className="public-post-meta">
-        <span>{post.mahala}</span>
-        <span>-</span>
-        <span>{author}</span>
-        <span>-</span>
-        <span>{post.timeAgo}</span>
-      </span>
-      <span className="public-post-topic">{post.topicName || post.topicId}</span>
-      <span className="public-post-content">{post.content}</span>
-      <span className="public-post-footer">
-        <span className="public-post-pill">
-          <MessageCircle size={13} />
-          {post.comments} komentara
-        </span>
-        <span className="public-post-pill">
-          <Bell size={13} />
-          Drot
-        </span>
-      </span>
-      <span className="public-post-votes">
-        <span className="public-vote-badge">
-          <ChevronUp size={18} />
-          <strong>{post.upvotes}</strong>
-        </span>
-        <span className="public-vote-badge">
-          <strong>{post.downvotes}</strong>
-          <ChevronDown size={18} />
-        </span>
-      </span>
-    </button>
+    </>
   );
 }

@@ -951,6 +951,7 @@ button {
   padding: 18px 74px 18px 18px;
   text-align: left;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
+  cursor: pointer;
 }
 
 .public-post-card::before {
@@ -1047,15 +1048,17 @@ button {
   min-height: 34px;
   align-items: center;
   gap: 6px;
+  border: 0;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.18);
   color: var(--text);
   padding: 0 12px;
   font-size: 10px;
   font-weight: 950;
+  cursor: pointer;
 }
 
-.public-post-votes {
+.public-vote-rail {
   position: absolute;
   top: 18px;
   right: 12px;
@@ -1094,6 +1097,8 @@ button {
 
 .detail-hero-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
   min-height: 228px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1164,18 +1169,6 @@ button {
   font-weight: 950;
 }
 
-.detail-vote-rail {
-  position: absolute;
-  top: 18px;
-  right: 12px;
-  bottom: 18px;
-  z-index: 3;
-  display: flex;
-  width: 54px;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .image-preview-layer {
   position: fixed;
   inset: 0;
@@ -1217,7 +1210,6 @@ button {
   color: #fff;
 }
 
-.detail-vote-badge,
 .reply-vote-badge {
   display: inline-flex;
   align-items: center;
@@ -1229,19 +1221,11 @@ button {
   cursor: pointer;
 }
 
-.detail-vote-badge {
-  min-height: 56px;
-  flex: 1;
-  flex-direction: column;
-  gap: 2px;
-  border-radius: 18px;
-}
-
 .detail-action-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 18px;
+  margin-top: auto;
 }
 
 .detail-action-pill,
@@ -1250,11 +1234,11 @@ button {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 0;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.18);
   color: #fff;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 950;
   cursor: pointer;
 }

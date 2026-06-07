@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { Post, PostReply } from '../types';
 import { DownloadGateModal } from './DownloadPrompt';
+import PublicVoteRail from './PublicVoteRail';
 
 export default function PostDetail({
   post,
@@ -68,16 +69,7 @@ export default function PostDetail({
           ) : null}
         </div>
 
-        <div className="detail-vote-rail" aria-label="Glasanje">
-          <button type="button" className="detail-vote-badge" onClick={openDownloadGate}>
-            <ChevronUp size={18} />
-            <strong>{post.upvotes}</strong>
-          </button>
-          <button type="button" className="detail-vote-badge" onClick={openDownloadGate}>
-            <strong>{post.downvotes}</strong>
-            <ChevronDown size={18} />
-          </button>
-        </div>
+        <PublicVoteRail upvotes={post.upvotes} downvotes={post.downvotes} onClick={openDownloadGate} />
       </article>
 
       <h2 className="detail-section-label">Komentari</h2>
