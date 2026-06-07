@@ -49,12 +49,12 @@ export default function PostDetail({
         <div className="detail-hero-meta">
           <span>{post.mahala}</span>
           <span>-</span>
-          <span>{author}</span>
+          <span>{post.topicName || post.topicId}</span>
           <span>-</span>
           <span>{post.timeAgo}</span>
         </div>
 
-        <p className="detail-hero-content">{post.content}</p>
+        <p className="detail-hero-content"><strong>{author}</strong> {post.content}</p>
 
         <div className="detail-action-row">
           <button type="button" className="detail-action-pill" onClick={openDownloadGate}>

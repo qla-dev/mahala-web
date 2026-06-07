@@ -1034,6 +1034,12 @@ button {
   -webkit-line-clamp: 3;
 }
 
+.public-post-content strong,
+.detail-hero-content strong {
+  font: inherit;
+  color: rgba(255, 255, 255, 0.78);
+}
+
 .public-post-footer {
   position: relative;
   z-index: 2;

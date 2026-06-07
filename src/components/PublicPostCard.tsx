@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { MouseEvent } from 'react';
 import { Bell, Eye, MessageCircle, X } from 'lucide-react';
+import { DownloadGateModal } from './DownloadPrompt';
 import PublicVoteRail from './PublicVoteRail';
 
 type PublicPost = {
@@ -30,11 +31,16 @@ export default function PublicPostCard({
   onClick: () => void;
 }) {
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [downloadGateOpen, setDownloadGateOpen] = useState(false);
   const author = post.author.startsWith('@') ? post.author : `@${post.author}`;
   const isImagePost = Boolean(post.isImage && post.imageUri);
   const openImagePreview = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     setImagePreviewOpen(true);
+  };
+  const openDownloadGate = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setDownloadGateOpen(true);
   };
 
   return (
@@ -59,15 +65,14 @@ export default function PublicPostCard({
             style={{ backgroundImage: `url("${post.imageUri}")` }}
           />
         ) : null}
-        <span className="public-post-meta">
-          <span>{post.mahala}</span>
-          <span>-</span>
-          <span>{author}</span>
-          <span>-</span>
-          <span>{post.timeAgo}</span>
-        </span>
-        <span className="public-post-topic">{post.topicName || post.topicId}</span>
-        <span className="public-post-content">{post.content}</span>
+      <span className="public-post-meta">
+        <span>{post.mahala}</span>
+        <span>-</span>
+        <span>{post.topicName || post.topicId}</span>
+        <span>-</span>
+        <span>{post.timeAgo}</span>
+      </span>
+      <span className="public-post-content"><strong>{author}</strong> {post.content}</span>
         <span className="public-post-footer">
           <button type="button" className="public-post-pill" onClick={(event) => event.stopPropagation()}>
             <MessageCircle size={13} />
@@ -87,9 +92,10 @@ export default function PublicPostCard({
         <PublicVoteRail
           upvotes={post.upvotes}
           downvotes={post.downvotes}
-          onClick={(event) => event.stopPropagation()}
+          onClick={openDownloadGate}
         />
       </article>
+      <DownloadGateModal open={downloadGateOpen} onClose={() => setDownloadGateOpen(false)} />
       {isImagePost && imagePreviewOpen ? (
         <div className="image-preview-layer" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
           <button type="button" className="image-preview-backdrop" onClick={() => setImagePreviewOpen(false)} aria-label="Zatvori sliku" />
