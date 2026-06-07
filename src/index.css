@@ -1203,15 +1203,18 @@ button {
 .image-preview-layer {
   position: fixed;
   inset: 0;
-  z-index: 13000;
+  z-index: 2147483647;
   display: grid;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   place-items: center;
   background: rgba(0, 0, 0, 0.92);
-  padding: 18px;
+  padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
 }
 
 .image-preview-backdrop {
-  position: absolute;
+  position: fixed;
   inset: 0;
   border: 0;
   background: transparent;
@@ -1227,9 +1230,9 @@ button {
 }
 
 .image-preview-close {
-  position: absolute;
-  top: 18px;
-  right: 18px;
+  position: fixed;
+  top: max(18px, env(safe-area-inset-top));
+  right: max(18px, env(safe-area-inset-right));
   z-index: 2;
   display: inline-flex;
   width: 42px;

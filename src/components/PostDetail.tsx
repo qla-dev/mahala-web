@@ -6,10 +6,10 @@ import {
   ChevronUp,
   Eye,
   MessageCircle,
-  X,
 } from 'lucide-react';
 import type { Post, PostReply } from '../types';
 import { DownloadGateModal } from './DownloadPrompt';
+import ImagePreviewOverlay from './ImagePreviewOverlay';
 import PublicVoteRail from './PublicVoteRail';
 
 export default function PostDetail({
@@ -116,13 +116,7 @@ export default function PostDetail({
 
       <DownloadGateModal open={downloadGateOpen} onClose={() => setDownloadGateOpen(false)} />
       {isImagePost && imagePreviewOpen ? (
-        <div className="image-preview-layer" role="dialog" aria-modal="true">
-          <button type="button" className="image-preview-backdrop" onClick={() => setImagePreviewOpen(false)} aria-label="Zatvori sliku" />
-          <img src={post.imageUri || ''} alt="" className="image-preview-img" />
-          <button type="button" className="image-preview-close" onClick={() => setImagePreviewOpen(false)} aria-label="Zatvori sliku">
-            <X size={20} />
-          </button>
-        </div>
+        <ImagePreviewOverlay src={post.imageUri || ''} onClose={() => setImagePreviewOpen(false)} />
       ) : null}
     </section>
   );

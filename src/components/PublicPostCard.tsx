@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { MouseEvent } from 'react';
-import { Bell, Eye, MessageCircle, X } from 'lucide-react';
+import { Bell, Eye, MessageCircle } from 'lucide-react';
 import { DownloadGateModal } from './DownloadPrompt';
+import ImagePreviewOverlay from './ImagePreviewOverlay';
 import PublicVoteRail from './PublicVoteRail';
 
 type PublicPost = {
@@ -97,13 +98,7 @@ export default function PublicPostCard({
       </article>
       <DownloadGateModal open={downloadGateOpen} onClose={() => setDownloadGateOpen(false)} />
       {isImagePost && imagePreviewOpen ? (
-        <div className="image-preview-layer" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-          <button type="button" className="image-preview-backdrop" onClick={() => setImagePreviewOpen(false)} aria-label="Zatvori sliku" />
-          <img src={post.imageUri || ''} alt="" className="image-preview-img" />
-          <button type="button" className="image-preview-close" onClick={() => setImagePreviewOpen(false)} aria-label="Zatvori sliku">
-            <X size={20} />
-          </button>
-        </div>
+        <ImagePreviewOverlay src={post.imageUri || ''} onClose={() => setImagePreviewOpen(false)} />
       ) : null}
     </>
   );
