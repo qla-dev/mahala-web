@@ -855,7 +855,7 @@ function Header({
   const menuItems: Array<{ page: Page; label: string }> = [
     { page: 'privacy', label: 'Privatnost' },
     { page: 'terms', label: 'Uslovi' },
-    { page: 'cookies', label: 'Kolacici' },
+    { page: 'cookies', label: 'Kolačići' },
   ];
   const storeBanner = storeBannerPlatform ? {
     href: storeBannerPlatform === 'ios' ? STORE_LINKS.ios : STORE_LINKS.android,
@@ -1395,18 +1395,18 @@ function LegalPage({ page, onBack }: { page: Exclude<Page, 'app'>; onBack: () =>
       title: 'Uslovi koristenja',
       intro: 'MAHALA web prikazuje javni pregled objava, tema i mapa. Pisanje, glasanje i puni profil dostupni su u nativnoj aplikaciji.',
       items: [
-        'Sadrzaj se prikazuje informativno i moze kasniti u odnosu na aplikaciju.',
-        'Zabranjeno je zloupotrebljavati javni prikaz, scraping i pokusaje zaobilazenja sigurnosti.',
-        'MAHALA moze ukloniti sadrzaj koji krsi pravila zajednice ili zakon.',
+        'Sadržaj se prikazuje informativno i može kasniti u odnosu na aplikaciju.',
+        'Zabranjeno je zloupotrebljavati javni prikaz, scraping i pokušaje zaobilaženja sigurnosti.',
+        'MAHALA može ukloniti sadržaj koji krši pravila zajednice ili zakon.',
       ],
     },
     cookies: {
-      title: 'Politika kolacica',
-      intro: 'Kolacici i slicne tehnologije koriste se da web radi stabilno, da zapamti osnovne postavke i da razumijemo agregirano koristenje stranice.',
+      title: 'Politika kolačića',
+      intro: 'Kolačići i slične tehnologije koriste se da web radi stabilno, da zapamti osnovne postavke i da razumijemo agregirano korištenje stranice.',
       items: [
-        'Ne koristimo kolacice za pisanje objava na webu jer je web samo za citanje i navigaciju.',
-        'Tehnicki kolacici mogu biti potrebni za sigurnost, performanse i pamcenje osnovnih izbora.',
-        'Linkovi prema App Store i Google Play mogu otvoriti servise koji imaju vlastita pravila kolacica.',
+        'Ne koristimo kolačiće za pisanje objava na webu jer je web samo za čitanje i navigaciju.',
+        'Tehnički kolačići mogu biti potrebni za sigurnost, performanse i pamćenje osnovnih izbora.',
+        'Linkovi prema App Store i Google Play mogu otvoriti servise koji imaju vlastita pravila kolačića.',
       ],
     },
   }[page];
