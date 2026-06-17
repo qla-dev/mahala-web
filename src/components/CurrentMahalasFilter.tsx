@@ -1,4 +1,4 @@
-import { Activity, Check, MapPin, SlidersHorizontal, X } from 'lucide-react';
+import { Activity, Check, MapPin, SlidersHorizontal, X } from "lucide-react";
 
 type CurrentMahala = {
   id: string;
@@ -39,13 +39,15 @@ export default function CurrentMahalasFilter({
           return (
             <button
               key={mahala.id}
-              className={active ? 'active' : ''}
+              className={active ? "active" : ""}
               type="button"
               onClick={() => onToggle(mahala.id)}
             >
-              <span className={`current-mahala-dot level-${Number(mahala.level) || 0}`} />
+              <span
+                className={`current-mahala-dot level-${Number(mahala.level) || 0}`}
+              />
               <span>{mahala.name}</span>
-              <small>{active ? 'Ukljuceno' : 'Utisano'}</small>
+              <small>{active ? "Uključeno" : "Utišano"}</small>
             </button>
           );
         })}
@@ -76,7 +78,11 @@ export function CurrentMahalasSheet({
   }
 
   return (
-    <div className="current-mahalas-sheet-layer" role="presentation" onClick={onClose}>
+    <div
+      className="current-mahalas-sheet-layer"
+      role="presentation"
+      onClick={onClose}
+    >
       <section
         className="current-mahalas-sheet"
         role="dialog"
@@ -90,7 +96,12 @@ export function CurrentMahalasSheet({
             <h2>MAHALE u kojima se nalazim</h2>
             <p>Filtriraj objave i teme iz zeljenih MAHALA</p>
           </div>
-          <button type="button" className="current-mahalas-sheet-close" aria-label="Zatvori" onClick={onClose}>
+          <button
+            type="button"
+            className="current-mahalas-sheet-close"
+            aria-label="Zatvori"
+            onClick={onClose}
+          >
             <X size={18} />
           </button>
         </div>
@@ -101,24 +112,28 @@ export function CurrentMahalasSheet({
             const active = enabledIds.has(activeId);
             const level = Number(mahala.level) || 0;
             const primary = Boolean(mahala.isMainZone) || index === 0;
-            const type = mahala.type || (level === 0 ? 'zone' : 'userMahala');
+            const type = mahala.type || (level === 0 ? "zone" : "userMahala");
 
             return (
               <button
                 key={mahala.id}
-                className={`current-mahalas-sheet-row type-${type} level-${level} ${active ? 'active' : 'inactive'} ${primary ? 'primary' : ''}`}
+                className={`current-mahalas-sheet-row type-${type} level-${level} ${active ? "active" : "inactive"} ${primary ? "primary" : ""}`}
                 type="button"
                 onClick={() => onToggle(activeId)}
               >
-                <span className={`current-mahalas-sheet-accent type-${type} level-${level}`} />
+                <span
+                  className={`current-mahalas-sheet-accent type-${type} level-${level}`}
+                />
                 <span className="current-mahalas-sheet-main">
                   <small>{getNodeTypeLabel(type, level)}</small>
                   <strong>{mahala.name}</strong>
                   {mahala.meta ? <em>{mahala.meta}</em> : null}
                 </span>
-                <span className={`current-mahalas-sheet-action ${active ? 'active' : ''}`}>
+                <span
+                  className={`current-mahalas-sheet-action ${active ? "active" : ""}`}
+                >
                   {active ? <Check size={14} /> : <Activity size={14} />}
-                  {active ? 'Utisaj' : 'Aktiviraj'}
+                  {active ? "Utisaj" : "Aktiviraj"}
                 </span>
               </button>
             );
@@ -139,13 +154,13 @@ export function CurrentMahalasSheet({
 }
 
 function getNodeTypeLabel(type: string, level: number) {
-  if (type === 'sarajevoArena') {
-    return 'PodMAHALA';
+  if (type === "sarajevoArena") {
+    return "PodMAHALA";
   }
 
-  if (type === 'userMahala') {
-    return level === 1 ? 'MAHALA level 1' : 'MAHALA level 2';
+  if (type === "userMahala") {
+    return level === 1 ? "MAHALA level 1" : "MAHALA level 2";
   }
 
-  return 'Glavna MAHALA';
+  return "Glavna MAHALA";
 }

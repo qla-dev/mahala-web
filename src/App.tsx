@@ -125,7 +125,7 @@ const STORE_LINKS = {
 const PAGE_META: Record<Page, PageMeta> = {
   app: {
     title: 'MAHALA - mapa i objave iz tvoje mahale',
-    description: 'MAHALA javni web pregled mapa, objava i tema iz tvoje mahale. Prati sta se desava u tvojoj blizini i preuzmi native aplikaciju.',
+    description: 'MAHALA javni web pregled mapa, objava i tema iz tvoje mahale. Prati šta se desava u tvojoj blizini i preuzmi native aplikaciju.',
     keywords: 'MAHALA, mahala app, Sarajevo, mapa mahala, lokalne objave, teme, komsiluk, Bosna i Hercegovina',
     path: '/',
   },
@@ -152,12 +152,13 @@ const PAGE_META: Record<Page, PageMeta> = {
 const fallbackTopics: Topic[] = [
   { id: 'sve', name: 'sve', slug: 'sve', count: 0, color: '#d1d5db', icon: 'chatbubble-ellipses', general: true },
   { id: 'glavna', name: 'glavna', slug: 'glavna', count: 0, description: 'Glavni lokalni tok za sve oko tebe', color: '#d1d5db', icon: 'chatbubble-ellipses', premium: false, general: true },
-  { id: 'eventi', name: 'eventi', slug: 'eventi', count: 0, description: 'Desavanja, okupljanja, svirke i lokalni dogadjaji', color: '#d1d5db', icon: 'calendar', premium: false, general: true },
+  { id: 'eventi', name: 'eventi', slug: 'eventi', count: 0, description: 'Dešavanja, okupljanja, svirke i lokalni događaji', color: '#d1d5db', icon: 'calendar', premium: false, general: true },
+  { id: 'spotted', name: 'spotted', slug: 'spotted', count: 0, description: 'Susreti u prolazu i potraga za osobom koju nisi stigao upoznati', color: '#d1d5db', icon: 'eye', premium: false, general: true },
   { id: 'posao', name: 'posao', slug: 'posao', count: 0, description: 'Poslovi, smjene, preporuke i lokalne prilike za rad', color: '#d1d5db', icon: 'briefcase', premium: false, general: true },
-  { id: 'ljubimci', name: 'ljubimci', slug: 'ljubimci', count: 0, description: 'Ljubimci, parkovi, setnje i komsijske sapice', color: '#d1d5db', icon: 'paw', premium: false, general: true },
-  { id: 'izgubljeno-i-nadjeno', name: 'izgubljeno_i_nadjeno', slug: 'izgubljeno-i-nadjeno', count: 0, description: 'Objave o izgubljenim stvarima, pronalascima i komsijskoj pomoci', color: '#d1d5db', icon: 'search', premium: false, general: true },
-  { id: 'politika', name: 'politika', slug: 'politika', count: 0, description: 'Vruce teme, lokalni pritisak i gradske price', color: '#d1d5db', icon: 'megaphone', premium: false, general: true },
-  { id: 'nocna-smjena', name: 'nocna_smjena', slug: 'nocna-smjena', count: 0, description: 'Kasni satovi, nocne dojave i ekipa koja je jos budna', color: '#d1d5db', icon: 'moon', premium: false, general: true },
+  { id: 'ljubimci', name: 'ljubimci', slug: 'ljubimci', count: 0, description: 'Ljubimci, parkovi, šetnje i komšijske šapice', color: '#d1d5db', icon: 'paw', premium: false, general: true },
+  { id: 'izgubljeno-i-nadjeno', name: 'izgubljeno_i_nadjeno', slug: 'izgubljeno-i-nadjeno', count: 0, description: 'Objave o izgubljenim stvarima, pronalascima i komšijskoj pomoći', color: '#d1d5db', icon: 'search', premium: false, general: true },
+  { id: 'politika', name: 'politika', slug: 'politika', count: 0, description: 'Vruće teme, lokalni pritisak i gradske priče', color: '#d1d5db', icon: 'megaphone', premium: false, general: true },
+  { id: 'nocna-smjena', name: 'nocna_smjena', slug: 'noćna-smjena', count: 0, description: 'Kasni satovi, noćne dojave i ekipa koja je još budna', color: '#d1d5db', icon: 'moon', premium: false, general: true },
   { id: 'gaming', name: 'gaming', slug: 'gaming', count: 0, description: 'Igre, ekipe, turniri i gejming dogovori', color: '#d1d5db', icon: 'game-controller', premium: false, general: true },
   { id: 'sport', name: 'sport', slug: 'sport', count: 0, description: 'Utakmice, treninzi, rekreacija i lokalni sportski razgovori', color: '#d1d5db', icon: 'football', premium: false, general: true },
   { id: 'prodajem-i-kupujem', name: 'prodajem_i_kupujem', slug: 'prodajem-i-kupujem', count: 0, description: 'Kupovina, prodaja, razmjena i lokalne ponude', color: '#d1d5db', icon: 'pricetag', premium: true, general: true },
@@ -201,7 +202,7 @@ const fallbackPosts: Post[] = [
     topicName: 'Komsiluk',
     author: '@hiperbola_55',
     mahala: 'C5',
-    content: 'Ko je ostavio kljuceve kod lifta u trecem ulazu, kod portira su.',
+    content: 'Ko je ostavio ključeve kod lifta u trećem ulazu, kod portira su.',
     timeAgo: 'prije 22 min',
     votes: 89,
     upvotes: 89,
@@ -247,7 +248,7 @@ const fallbackPosts: Post[] = [
     topicName: 'Desavanja',
     author: '@rajvosa',
     mahala: 'Bascarsija',
-    content: 'Veceras mali koncert kod Vijecnice, izgleda fino za prosetati.',
+    content: 'Večeras mali koncert kod Vijećnice, izgleda fino za prošetati.',
     timeAgo: 'prije 2h',
     votes: 203,
     upvotes: 203,
@@ -1178,7 +1179,7 @@ function FeedPanel({
       <div className="panel-title">
         <div>
           <p>Trenutne MAHALE</p>
-          <h1>Sta se desava oko tebe</h1>
+          <h1>Šta se desava oko tebe</h1>
         </div>
         <Sparkles size={20} />
       </div>
@@ -1209,7 +1210,7 @@ function FeedPanel({
             <div className="feed-empty-state compact">
               <LottieBox className="feed-empty-lottie" />
               <h2>Nema objava u blizini</h2>
-              <p>Kada se pojave nove objave ili teme u tvojim trenutnim mahalama, prikazat ce se ovdje.</p>
+              <p>Kada se pojave nove objave ili teme u tvojim trenutnim mahalama, prikazat će se ovdje.</p>
             </div>
           ) : (
             <>
@@ -1360,7 +1361,7 @@ function MahalaMap({
         <button type="button" className={mapType === 'dark' ? 'active' : ''} aria-label="Tamna mapa" onClick={() => setMapType('dark')}>
           <Moon size={17} />
         </button>
-        <button type="button" className={mapType === 'light' ? 'active' : ''} aria-label="Svijetla mapa" onClick={() => setMapType('light')}>
+        <button type="button" className={mapType === 'light' ? 'active' : ''} aria-label="Svjetla mapa" onClick={() => setMapType('light')}>
           <Sun size={17} />
         </button>
         <button type="button" className={mapType === 'satellite' ? 'active' : ''} aria-label="Satelitska mapa" onClick={() => setMapType('satellite')}>
@@ -1386,13 +1387,13 @@ function LegalPage({ page, onBack }: { page: Exclude<Page, 'app'>; onBack: () =>
       intro: 'Na webu prikazujemo javne podatke i osnovnu analitiku potrebnu za stabilan rad servisa.',
       items: [
         'Lokacija na webu nije potrebna za pregled javne mape.',
-        'Ako otvoris store link, Apple ili Google obradjuju podatke prema svojim pravilima.',
-        'Podaci iz aplikacije cuvaju se kroz MAHALA backend i koriste za objave, komentare, notifikacije i pro status.',
+        'Ako otvoriš store link, Apple ili Google obrađuju podatke prema svojim pravilima.',
+        'Podaci iz aplikacije \u010duvaju se kroz MAHALA backend i koriste za objave, komentare, notifikacije i pro status.',
       ],
     },
     terms: {
       title: 'Uslovi koristenja',
-      intro: 'MAHALA web prikazuje javni pregled objava, tema i mapa. Pisanje, glasanje i puni profil dostupni su u native aplikaciji.',
+      intro: 'MAHALA web prikazuje javni pregled objava, tema i mapa. Pisanje, glasanje i puni profil dostupni su u nativnoj aplikaciji.',
       items: [
         'Sadrzaj se prikazuje informativno i moze kasniti u odnosu na aplikaciju.',
         'Zabranjeno je zloupotrebljavati javni prikaz, scraping i pokusaje zaobilazenja sigurnosti.',
@@ -1442,7 +1443,7 @@ function BottomNav({
 }) {
   const items: Array<{ id: MobileView; label: string; icon: ReactNode }> = [
     { id: 'feed', label: 'Feed', icon: <Home size={19} /> },
-    { id: 'topics', label: 'Teme', icon: <Search size={19} /> },
+    { id: 'topics', label: 'Pretraga', icon: <Search size={19} /> },
     { id: 'map', label: 'Mapa', icon: <MapIcon size={19} /> },
     { id: 'profile', label: 'Preuzmi', icon: <Download size={19} /> },
   ];
