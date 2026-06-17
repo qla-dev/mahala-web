@@ -133,7 +133,7 @@ export function CurrentMahalasSheet({
                   className={`current-mahalas-sheet-action ${active ? "active" : ""}`}
                 >
                   {active ? <Check size={14} /> : <Activity size={14} />}
-                  {active ? "Utisaj" : "Aktiviraj"}
+                  {active ? "Utišaj" : "Aktiviraj"}
                 </span>
               </button>
             );

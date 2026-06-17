@@ -39,7 +39,7 @@ export function DownloadPrompt({
       <h1>{title}</h1>
       <p>{description}</p>
       <div className="download-screen-highlights">
-        <span>Lokacija uzivo</span>
+        <span>Lokacija uživo</span>
         <span>Teme iz mahale</span>
         <span>Brze notifikacije</span>
       </div>

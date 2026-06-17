@@ -29,10 +29,10 @@ function RuntimeFallback({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main className="app-error-panel">
-          <h1>MAHALA web se nije ucitao</h1>
-          <p>Osvjezi stranicu ili iskljuci i ponovo ukljuci lokaciju za ovaj browser.</p>
+          <h1>MAHALA web se nije učitao</h1>
+          <p>Osvježi stranicu ili isključi i ponovo uključi lokaciju za ovaj browser.</p>
           <button type="button" onClick={() => window.location.reload()}>
-            Osvjezi
+            Osvježi
           </button>
         </main>
       </div>

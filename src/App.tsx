@@ -125,7 +125,7 @@ const STORE_LINKS = {
 const PAGE_META: Record<Page, PageMeta> = {
   app: {
     title: 'MAHALA - mapa i objave iz tvoje mahale',
-    description: 'MAHALA javni web pregled mapa, objava i tema iz tvoje mahale. Prati šta se desava u tvojoj blizini i preuzmi native aplikaciju.',
+    description: 'MAHALA javni web pregled mapa, objava i tema iz tvoje mahale. Prati šta se dešava u tvojoj blizini i preuzmi native aplikaciju.',
     keywords: 'MAHALA, mahala app, Sarajevo, mapa mahala, lokalne objave, teme, komsiluk, Bosna i Hercegovina',
     path: '/',
   },
@@ -609,6 +609,62 @@ function getMahalaApiScopeId(zone: Zone) {
   }
 
   return zone.officialId || zone.id;
+}
+
+function getZoneComparableIds(zone: Zone) {
+  return new Set(
+    [
+      zone.id,
+      zone.officialId,
+      zone.scopeId,
+      zone.sourceId,
+      getMahalaApiScopeId(zone),
+    ]
+      .filter(Boolean)
+      .map((value) => String(value)),
+  );
+}
+
+function isSpecificCurrentMahala(zone: Zone) {
+  return Number(zone.level) > 0 || zone.type === 'userMahala';
+}
+
+function getFeedScopeIds(zones: Zone[], enabledIds?: Set<string>) {
+  const visibleZones = enabledIds
+    ? zones.filter((zone) => enabledIds.has(String(zone.id)))
+    : zones;
+  const specificZones = visibleZones.filter(isSpecificCurrentMahala);
+  const sourceZones = specificZones.length > 0 ? specificZones : visibleZones;
+
+  return [...new Set(sourceZones.map((zone) => String(getMahalaApiScopeId(zone))))];
+}
+
+function belongsToAllowedMahalaScopes(
+  mahalaId: string | null | undefined,
+  allowedScopeIds: Set<string>,
+  zones: Zone[],
+) {
+  if (!mahalaId) {
+    return false;
+  }
+
+  const normalizedMahalaId = String(mahalaId);
+  if (allowedScopeIds.has(normalizedMahalaId)) {
+    return true;
+  }
+
+  const matchedZone = zones.find((zone) => getZoneComparableIds(zone).has(normalizedMahalaId));
+  if (!matchedZone) {
+    return false;
+  }
+
+  for (const comparableId of getZoneComparableIds(matchedZone)) {
+    if (allowedScopeIds.has(comparableId)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function getNearbyMahalaIds(coordinate: Coordinate, sarajevoZones: Zone[], userZones: Zone[]) {
@@ -1179,7 +1235,7 @@ function FeedPanel({
       <div className="panel-title">
         <div>
           <p>Trenutne MAHALE</p>
-          <h1>Šta se desava oko tebe</h1>
+          <h1>Šta se dešava oko tebe</h1>
         </div>
         <Sparkles size={20} />
       </div>
@@ -1203,7 +1259,7 @@ function FeedPanel({
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
-            {refreshing ? <div className="feed-refresh-indicator">Osvjezavanje...</div> : null}
+            {refreshing ? <div className="feed-refresh-indicator">Osvježavanje...</div> : null}
             {loading ? (
               FEED_SKELETONS.map((item) => <FeedSkeletonCard key={item} />)
             ) : posts.length === 0 ? (
@@ -1470,12 +1526,12 @@ export default function App() {
   );
   const [topics, setTopics] = useState<Topic[]>(fallbackTopics);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [feedLoading, setFeedLoading] = useState(true);
+  const [feedLoading, setFeedLoading] = useState(false);
   const [feedRefreshing, setFeedRefreshing] = useState(false);
   const [feedLoadingMore, setFeedLoadingMore] = useState(false);
   const [feedHasMore, setFeedHasMore] = useState(false);
   const [feedPage, setFeedPage] = useState(1);
-  const [activeFeedMahalaIds, setActiveFeedMahalaIds] = useState<string[]>(DEFAULT_PUBLIC_MAHALA_IDS);
+  const [activeFeedMahalaIds, setActiveFeedMahalaIds] = useState<string[]>([]);
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [feedSort, setFeedSort] = useState<FeedSort>('recent');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -1489,6 +1545,10 @@ export default function App() {
   const feedRequestIdRef = useRef(0);
   const locationRequestIdRef = useRef(0);
   const mapZones = useMemo(() => [...sarajevoZones, ...zones], [sarajevoZones, zones]);
+  const enabledFeedScopeIds = useMemo(
+    () => getFeedScopeIds(currentMahalas, enabledMahalaIds),
+    [currentMahalas, enabledMahalaIds],
+  );
 
   const navigateToPage = (nextPage: Page) => {
     const nextPath = getPathForPage(nextPage);
@@ -1606,12 +1666,28 @@ export default function App() {
   ) => {
     const requestId = feedRequestIdRef.current + 1;
     feedRequestIdRef.current = requestId;
-    const resolvedIds = [...new Set(feedMahalaIds.length ? feedMahalaIds : DEFAULT_PUBLIC_MAHALA_IDS)];
+    const resolvedIds = [...new Set(feedMahalaIds.map((id) => String(id)).filter(Boolean))];
     const page = options.page ?? 1;
     const append = Boolean(options.append);
     const includeTopics = options.includeTopics ?? page === 1;
+    const allowedScopeIds = new Set(resolvedIds);
 
     setActiveFeedMahalaIds(resolvedIds);
+
+    if (resolvedIds.length === 0) {
+      setPosts([]);
+      setFeedPage(1);
+      setFeedHasMore(false);
+      if (includeTopics) {
+        setTopics(mergeTopicsWithGeneric([]));
+        setSelectedTopicId(null);
+      }
+      setFeedLoading(false);
+      setFeedRefreshing(false);
+      setFeedLoadingMore(false);
+      return;
+    }
+
     if (append) {
       setFeedLoadingMore(true);
     } else if (options.refresh) {
@@ -1621,35 +1697,60 @@ export default function App() {
     }
 
     try {
-      const postsPromise = fetch(endpoints.feedForCurrentMahalas(resolvedIds, { limit: FEED_PAGE_LIMIT, page, sort }), {
-        headers: { Accept: 'application/json' },
-      }).then((response) => response.json());
-      const topicsPromise = includeTopics
-        ? fetch(endpoints.topicsForCurrentMahalas(resolvedIds), {
+      const useStartupBundle = includeTopics && page === 1;
+      const bundlePromise = useStartupBundle
+        ? fetch(endpoints.startupForCurrentMahalas(resolvedIds, { limit: FEED_PAGE_LIMIT, sort }), {
             headers: { Accept: 'application/json' },
           }).then((response) => response.json())
         : Promise.resolve(null);
-      const [postsPayload, topicsPayload] = await Promise.all([postsPromise, topicsPromise]);
+      const postsPromise = useStartupBundle
+        ? Promise.resolve(null)
+        : fetch(endpoints.feedForCurrentMahalas(resolvedIds, { limit: FEED_PAGE_LIMIT, page, sort }), {
+            headers: { Accept: 'application/json' },
+          }).then((response) => response.json());
+      const topicsPromise = useStartupBundle
+        ? Promise.resolve(null)
+        : includeTopics
+          ? fetch(endpoints.topicsForCurrentMahalas(resolvedIds), {
+              headers: { Accept: 'application/json' },
+            }).then((response) => response.json())
+          : Promise.resolve(null);
+      const [bundlePayload, postsPayload, topicsPayload] = await Promise.all([bundlePromise, postsPromise, topicsPromise]);
 
       if (requestId !== feedRequestIdRef.current) {
         return;
       }
 
-      const normalizedPosts = Array.isArray(postsPayload?.data)
-        ? postsPayload.data.map(normalizePost).filter(Boolean) as Post[]
+      const postsData = useStartupBundle
+        ? bundlePayload?.data?.posts
+        : postsPayload?.data;
+      const postsMeta = useStartupBundle
+        ? bundlePayload?.meta?.posts
+        : postsPayload?.meta;
+      const normalizedPosts = Array.isArray(postsData)
+        ? postsData.map(normalizePost).filter(Boolean) as Post[]
         : [];
-      const nextPosts = normalizedPosts.map((post) => ({
-        ...post,
-        mahala: getMahalaDisplayName(post.mahalaId, mapZones),
-        color: getMahalaTopicColor(post.mahalaId, mapZones, post.color),
-      }));
+      const nextPosts = normalizedPosts
+        .filter((post) => belongsToAllowedMahalaScopes(post.mahalaId, allowedScopeIds, mapZones))
+        .map((post) => ({
+          ...post,
+          mahala: getMahalaDisplayName(post.mahalaId, mapZones),
+          color: getMahalaTopicColor(post.mahalaId, mapZones, post.color),
+        }));
       setPosts((current) => append ? [...current, ...nextPosts.filter((post) => !current.some((item) => item.id === post.id))] : nextPosts);
-      setFeedPage(Number(postsPayload?.meta?.page ?? page));
-      setFeedHasMore(Boolean(postsPayload?.meta?.has_more));
+      setFeedPage(Number(postsMeta?.page ?? page));
+      setFeedHasMore(Boolean(postsMeta?.has_more));
 
-      if (includeTopics && topicsPayload) {
-        const nextTopics = Array.isArray(topicsPayload?.data)
-          ? topicsPayload.data.map(normalizeTopicPayload)
+      if (includeTopics) {
+        const topicsData = useStartupBundle
+          ? bundlePayload?.data?.topics
+          : topicsPayload?.data;
+        const nextTopics = Array.isArray(topicsData)
+          ? topicsData
+              .map(normalizeTopicPayload)
+              .filter((topic) =>
+                topic.general || belongsToAllowedMahalaScopes(topic.mahalaId, allowedScopeIds, mapZones),
+              )
           : [];
         setTopics(mergeTopicsWithGeneric(nextTopics));
         setSelectedTopicId(null);
@@ -1662,10 +1763,6 @@ export default function App() {
       }
     }
   }, [feedSort, mapZones, normalizeTopicPayload]);
-
-  useEffect(() => {
-    void loadFeedForMahalaIds(DEFAULT_PUBLIC_MAHALA_IDS, feedSort);
-  }, [loadFeedForMahalaIds]);
 
   const requestLocation = useCallback(() => {
     const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
@@ -1704,7 +1801,7 @@ export default function App() {
         setSelectedZone(currentZone);
       }
       setLocationStatus('granted');
-      void loadFeedForMahalaIds(nextCurrentMahalas.map((zone) => String(getMahalaApiScopeId(zone))), feedSort);
+      void loadFeedForMahalaIds(getFeedScopeIds(nextCurrentMahalas), feedSort);
     };
 
     const handleError = (error: GeolocationPositionError) => {
@@ -1736,10 +1833,7 @@ export default function App() {
         next.add(id);
       }
 
-      const enabledIds = currentMahalas
-        .filter((zone) => next.has(String(zone.id)))
-        .map((zone) => String(getMahalaApiScopeId(zone)));
-      void loadFeedForMahalaIds(enabledIds, feedSort);
+      void loadFeedForMahalaIds(getFeedScopeIds(currentMahalas, next), feedSort);
 
       return next;
     });
@@ -1747,11 +1841,11 @@ export default function App() {
 
   const changeFeedSort = useCallback((nextSort: FeedSort) => {
     setFeedSort(nextSort);
-    const enabledIds = currentMahalas
-      .filter((zone) => enabledMahalaIds.has(String(zone.id)))
-      .map((zone) => String(getMahalaApiScopeId(zone)));
-    void loadFeedForMahalaIds(enabledIds.length ? enabledIds : DEFAULT_PUBLIC_MAHALA_IDS, nextSort);
-  }, [currentMahalas, enabledMahalaIds, loadFeedForMahalaIds]);
+    void loadFeedForMahalaIds(
+      currentMahalas.length > 0 ? enabledFeedScopeIds : [],
+      nextSort,
+    );
+  }, [currentMahalas.length, enabledFeedScopeIds, loadFeedForMahalaIds]);
 
   const refreshFeed = useCallback(() => {
     void loadFeedForMahalaIds(activeFeedMahalaIds, feedSort, { page: 1, refresh: true });
@@ -1813,6 +1907,21 @@ export default function App() {
       setSelectedZone(currentZone);
     }
   }, [lastLocatedCoordinate, sarajevoZones, zones]);
+
+  useEffect(() => {
+    if (locationStatus !== 'granted') {
+      return;
+    }
+
+    const currentIds = [...activeFeedMahalaIds].sort();
+    const nextIds = [...enabledFeedScopeIds].sort();
+
+    if (currentIds.length === nextIds.length && currentIds.every((id, index) => id === nextIds[index])) {
+      return;
+    }
+
+    void loadFeedForMahalaIds(nextIds, feedSort);
+  }, [activeFeedMahalaIds, enabledFeedScopeIds, feedSort, loadFeedForMahalaIds, locationStatus]);
 
   const selectedTopic = useMemo(
     () => topics.find((topic) => topic.id === selectedTopicId) || null,

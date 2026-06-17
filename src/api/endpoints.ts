@@ -27,6 +27,18 @@ const endpoints = {
   publicBase: PUBLIC_URL,
   mediaUrl,
   mahalas: `${BASE_URL}/mahalas`,
+  startupForCurrentMahalas: (
+    mahalaIds: string[],
+    params: { limit?: number; sort?: string } = {},
+  ) => {
+    const query = [
+      `mahala_ids=${encodeURIComponent(mahalaIds.join(','))}`,
+      `limit=${encodeURIComponent(String(params.limit ?? 12))}`,
+      `sort=${encodeURIComponent(params.sort ?? 'recent')}`,
+    ];
+
+    return `${BASE_URL}/startup?${query.join('&')}`;
+  },
   feedForCurrentMahalas: (
     mahalaIds: string[],
     params: { limit?: number; page?: number; sort?: string } = {},
