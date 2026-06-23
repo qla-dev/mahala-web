@@ -131,20 +131,20 @@ const PAGE_META: Record<Page, PageMeta> = {
   },
   privacy: {
     title: 'MAHALA - Politika privatnosti',
-    description: 'Procitaj kako MAHALA web i aplikacija pristupaju privatnosti, lokaciji, javnom sadrzaju i povezanim servisima.',
+    description: 'Pročitaj kako MAHALA web i aplikacija pristupaju privatnosti, lokaciji, javnom sadržaju i povezanim servisima.',
     keywords: 'MAHALA privatnost, politika privatnosti, lokacija, podaci, aplikacija',
     path: '/privacy',
   },
   terms: {
-    title: 'MAHALA - Uslovi koristenja',
-    description: 'Uslovi koristenja za MAHALA web pregled mapa, objava, tema i native aplikaciju.',
-    keywords: 'MAHALA uslovi, terms, pravila, korisnicki uslovi, aplikacija',
+    title: 'MAHALA - Uslovi korištenja',
+    description: 'Uslovi korištenja za MAHALA web pregled mapa, objava, tema i native aplikaciju.',
+    keywords: 'MAHALA uslovi, terms, pravila, korisnički uslovi, aplikacija',
     path: '/terms',
   },
   cookies: {
-    title: 'MAHALA - Politika kolacica',
-    description: 'Informacije o kolacicima i slicnim tehnologijama koje MAHALA web koristi za stabilnost, performanse i osnovne postavke.',
-    keywords: 'MAHALA kolacici, cookies, web tehnologije, privatnost',
+    title: 'MAHALA - Politika kolačića',
+    description: 'Informacije o kolačićima i sličnim tehnologijama koje MAHALA web koristi za stabilnost, performanse i osnovne postavke.',
+    keywords: 'MAHALA kolačići, cookies, web tehnologije, privatnost',
     path: '/cookies',
   },
 };
@@ -1440,41 +1440,51 @@ function LegalPage({ page, onBack }: { page: Exclude<Page, 'app'>; onBack: () =>
   const content = {
     privacy: {
       title: 'Politika privatnosti',
-      intro: 'Na webu prikazujemo javne podatke i osnovnu analitiku potrebnu za stabilan rad servisa.',
+      intro: 'MAHALA privatnost je napravljena tako da jasno objasni koje podatke koristimo, zašto ih koristimo i gdje ostaju. Web je javni pregled, a puni profil i interakcije dostupni su u aplikaciji.',
       items: [
-        'Lokacija na webu nije potrebna za pregled javne mape.',
+        'MAHALA tim ne pohranjuje tvoju trenutnu GPS lokaciju u bazu podataka. Trenutna lokacija se koristi na telefonu za određivanje MAHALA u kojima se nalaziš.',
+        'Lokacija na webu nije potrebna za pregled javne mape, javnih objava i tema.',
+        'Kada u aplikaciji objaviš sadržaj, komentar, prijavu ili koristiš nalog, čuvamo samo podatke potrebne za prikaz, moderaciju, sigurnost, notifikacije i Pro status.',
+        'Tehnički logovi i osnovna analitika koriste se za stabilnost servisa, otkrivanje grešaka i zaštitu od zloupotrebe.',
         'Ako otvoriš store link, Apple ili Google obrađuju podatke prema svojim pravilima.',
-        'Podaci iz aplikacije \u010duvaju se kroz MAHALA backend i koriste za objave, komentare, notifikacije i pro status.',
+        'Privatnost u store opisima i policy stranici treba ostati usklađena sa stvarnim ponašanjem aplikacije, uključujući lokaciju i podatke koji se šalju sa uređaja.',
       ],
     },
     terms: {
-      title: 'Uslovi koristenja',
-      intro: 'MAHALA web prikazuje javni pregled objava, tema i mapa. Pisanje, glasanje i puni profil dostupni su u nativnoj aplikaciji.',
+      title: 'Uslovi korištenja',
+      intro: 'MAHALA web prikazuje javni pregled objava, tema i mapa. Pisanje, glasanje, komentarisanje i puni profil dostupni su u nativnoj aplikaciji.',
       items: [
         'Sadržaj se prikazuje informativno i može kasniti u odnosu na aplikaciju.',
-        'Zabranjeno je zloupotrebljavati javni prikaz, scraping i pokušaje zaobilaženja sigurnosti.',
-        'MAHALA može ukloniti sadržaj koji krši pravila zajednice ili zakon.',
+        'Korisnik je odgovoran za sadržaj koji objavi, uključujući poštovanje zakona, privatnosti drugih osoba i pravila zajednice.',
+        'Zabranjeni su spam, uznemiravanje, govor mržnje, objava tuđih privatnih podataka i pokušaji zaobilaženja sigurnosnih mjera.',
+        'Nije dozvoljeno zloupotrebljavati javni prikaz, scraping, automatizovano preuzimanje podataka ili pokušaje ometanja rada servisa.',
+        'MAHALA može sakriti, ograničiti ili ukloniti sadržaj i naloge koji krše pravila zajednice, zakon ili sigurnost servisa.',
+        'Servis se može mijenjati, privremeno ograničiti ili biti nedostupan zbog održavanja, sigurnosti ili tehničkih problema.',
       ],
     },
     cookies: {
       title: 'Politika kolačića',
-      intro: 'Kolačići i slične tehnologije koriste se da web radi stabilno, da zapamti osnovne postavke i da razumijemo agregirano korištenje stranice.',
+      intro: 'Kolačići i slične tehnologije koriste se pažljivo: da web radi stabilno, zapamti osnovne postavke i pomogne nam razumjeti agregirano korištenje stranice.',
       items: [
-        'Ne koristimo kolačiće za pisanje objava na webu jer je web samo za čitanje i navigaciju.',
-        'Tehnički kolačići mogu biti potrebni za sigurnost, performanse i pamćenje osnovnih izbora.',
+        'Ne koristimo kolačiće za pisanje objava na webu jer je web namijenjen javnom pregledu i navigaciji.',
+        'Tehnički kolačići ili lokalna pohrana mogu biti potrebni za sigurnost, performanse, pamćenje osnovnih izbora i stabilan prikaz.',
+        'Analitika, ako je uključena, koristi se agregirano za razumijevanje korištenja weba, poboljšanje performansi i pronalazak grešaka.',
+        'Kolačići se ne koriste za čuvanje tvoje trenutne lokacije u MAHALA bazi podataka.',
         'Linkovi prema App Store i Google Play mogu otvoriti servise koji imaju vlastita pravila kolačića.',
+        'Kolačiće možeš obrisati ili ograničiti kroz postavke browsera, uz mogućnost da dio web funkcija radi manje ugodno.',
       ],
     },
   }[page];
 
   return (
     <main className="legal-page">
-      <button className="back-button" onClick={onBack}>
-        <ChevronLeft size={18} />
-        Nazad
-      </button>
       <section>
-        <Shield size={28} />
+        <div className="legal-page-header">
+          <Shield size={28} />
+          <button className="legal-close-button" type="button" onClick={onBack} aria-label="Zatvori">
+            <X size={18} />
+          </button>
+        </div>
         <h1>{content.title}</h1>
         <p>{content.intro}</p>
         <div className="legal-list">
