@@ -155,6 +155,13 @@ if ($npm === null) {
     exit(127);
 }
 
+$nodeDir = dirname(is_link($npm) ? readlink($npm) ?: $npm : $npm);
+$currentPath = getenv('PATH') ?: '';
+if ($nodeDir !== '' && strpos($currentPath, $nodeDir) === false) {
+    putenv('PATH='.$nodeDir.':'.$currentPath);
+    $write("Added {$nodeDir} to PATH.\n");
+}
+
 $npmCommand = $shellArg($npm);
 
 $commands = [
