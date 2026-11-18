@@ -1,0 +1,7 @@
+.support-page form { display: grid; gap: 1.25rem; margin-top: 2rem; }
+.support-page label { display: grid; gap: .5rem; font-weight: 600; }
+.support-page input, .support-page textarea { width: 100%; border: 1px solid #595365; border-radius: .75rem; background: #17131f; color: #fff; padding: .85rem; font: inherit; }
+.support-page textarea { resize: vertical; }
+.support-page button { border: 1px solid #8b5cf6; border-radius: .75rem; background: #7345d4; color: #fff; padding: .8rem 1.2rem; cursor: pointer; }
+.support-page button:disabled { opacity: .6; cursor: wait; }
+.support-page a { color: #c4a5ff; text-decoration: underline; }

@@ -5,6 +5,7 @@ const env = (import.meta as ImportMeta & {
 const defaultPublicUrl = 'https://api.mahala.app/public';
 const PUBLIC_URL = ((env?.VITE_MAHALA_PUBLIC_URL || defaultPublicUrl) ?? '').replace(/\/+$/, '');
 const BASE_URL = `${PUBLIC_URL}/api`;
+export const supportRequestsUrl = `${BASE_URL}/support-requests`;
 
 const mediaUrl = (path: string | null | undefined) => {
   const value = String(path || '');

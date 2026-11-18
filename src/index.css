@@ -1488,6 +1488,10 @@ button {
   background: #08080d;
 }
 
+.map-dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(1.1);
+}
+
 .leaflet-control-attribution {
   border-radius: 10px 0 0 0;
   background: rgba(0, 0, 0, 0.55) !important;

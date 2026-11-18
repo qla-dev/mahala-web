@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, TouchEvent } from 'react';
+import ChildSafetyPage from './components/ChildSafetyPage';
+import SupportPage from './components/SupportPage';
 import {
   MapContainer,
   Polygon,
@@ -72,7 +74,7 @@ type Zone = {
   coordinates: Coordinate[];
   holes?: Coordinate[][];
 };
-type Page = 'app' | 'privacy' | 'terms' | 'cookies';
+type Page = 'app' | 'privacy' | 'terms' | 'cookies' | 'support' | 'child-safety';
 type MobileView = 'feed' | 'map' | 'topics' | 'profile';
 type LocationStatus = 'idle' | 'locating' | 'granted' | 'denied' | 'unsupported' | 'error';
 type MapType = 'dark' | 'light' | 'satellite';
@@ -94,9 +96,14 @@ const FEED_SORT_TABS = [
 type FeedSort = typeof FEED_SORT_TABS[number]['id'];
 const FEED_PAGE_LIMIT = 14;
 const MAP_TILESETS: Record<MapType, string> = {
-  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  dark: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  light: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+};
+const MAP_TILE_ATTRIBUTION: Record<MapType, string> = {
+  dark: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  light: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  satellite: '&copy; Esri',
 };
 const SARAJEVO_MAHALA_ZONE = {
   id: 'mahala-sarajevo',
@@ -126,7 +133,7 @@ const PAGE_META: Record<Page, PageMeta> = {
   app: {
     title: 'MAHALA - mapa i objave iz tvoje mahale',
     description: 'MAHALA javni web pregled mapa, objava i tema iz tvoje mahale. Prati šta se dešava u tvojoj blizini i preuzmi native aplikaciju.',
-    keywords: 'MAHALA, mahala app, Sarajevo, mapa mahala, lokalne objave, teme, komsiluk, Bosna i Hercegovina',
+    keywords: 'MAHALA, mahala app, lokalna zajednica, mapa mahala, lokalne objave, teme, komšiluk',
     path: '/',
   },
   privacy: {
@@ -146,6 +153,18 @@ const PAGE_META: Record<Page, PageMeta> = {
     description: 'Informacije o kolačićima i sličnim tehnologijama koje MAHALA web koristi za stabilnost, performanse i osnovne postavke.',
     keywords: 'MAHALA kolačići, cookies, web tehnologije, privatnost',
     path: '/cookies',
+  },
+  support: {
+    title: 'MAHALA - Kontakt i sigurnost',
+    description: 'Kontaktiraj MAHALA tim za podršku ili prijavu neprikladnog sadržaja.',
+    keywords: 'MAHALA, kontakt, podrška, prijava, sigurnost',
+    path: '/support',
+  },
+  'child-safety': {
+    title: 'MAHALA - Standardi zaštite djece / Child Safety Standards',
+    description: 'Standardi aplikacije MAHALA (qla.dev) protiv seksualnog zlostavljanja i iskorištavanja djece. Child safety standards of the MAHALA app by qla.dev.',
+    keywords: 'MAHALA, child safety, zaštita djece, CSAM, CSAE, sigurnost djece',
+    path: '/child-safety',
   },
 };
 
@@ -272,6 +291,9 @@ function normalizePath(pathname: string) {
 
 function getPageFromPath(pathname = window.location.pathname): Page {
   const path = normalizePath(pathname);
+
+  if (path === '/support') return 'support';
+  if (path === '/child-safety') return 'child-safety';
 
   if (path === '/privacy') {
     return 'privacy';
@@ -909,6 +931,8 @@ function Header({
     return primaryMahala?.name || 'Lokacije nedostupna';
   })();
   const menuItems: Array<{ page: Page; label: string }> = [
+    { page: 'support', label: 'Kontakt i sigurnost' },
+    { page: 'child-safety', label: 'Zaštita djece' },
     { page: 'privacy', label: 'Privatnost' },
     { page: 'terms', label: 'Uslovi' },
     { page: 'cookies', label: 'Kolačići' },
@@ -1380,10 +1404,11 @@ function MahalaMap({
   };
 
   return (
-    <div className="map-shell">
+    <div className={`map-shell ${mapType === 'dark' ? 'map-dark' : ''}`}>
       <MapContainer center={DEFAULT_CENTER} zoom={12} minZoom={8} className="map-view" zoomControl={false}>
         <TileLayer
-          attribution="&copy; OpenStreetMap contributors &copy; CARTO"
+          key={mapType}
+          attribution={MAP_TILE_ATTRIBUTION[mapType]}
           url={MAP_TILESETS[mapType]}
         />
         {zones.map((zone) => {
@@ -1436,7 +1461,7 @@ function MahalaMap({
   );
 }
 
-function LegalPage({ page, onBack }: { page: Exclude<Page, 'app'>; onBack: () => void }) {
+function LegalPage({ page, onBack }: { page: Exclude<Page, 'app' | 'support' | 'child-safety'>; onBack: () => void }) {
   const content = {
     privacy: {
       title: 'Politika privatnosti',
@@ -1447,16 +1472,20 @@ function LegalPage({ page, onBack }: { page: Exclude<Page, 'app'>; onBack: () =>
         'Kada u aplikaciji objaviš sadržaj, komentar, prijavu ili koristiš nalog, čuvamo samo podatke potrebne za prikaz, moderaciju, sigurnost, notifikacije i Pro status.',
         'Tehnički logovi i osnovna analitika koriste se za stabilnost servisa, otkrivanje grešaka i zaštitu od zloupotrebe.',
         'Ako otvoriš store link, Apple ili Google obrađuju podatke prema svojim pravilima.',
-        'Privatnost u store opisima i policy stranici treba ostati usklađena sa stvarnim ponašanjem aplikacije, uključujući lokaciju i podatke koji se šalju sa uređaja.',
+        'Prijave i zahtjevi za podršku čuvaju se u našem sistemu. Prijava može sadržavati kopiju prijavljene objave, slike ili komentara, identifikatore korisnika i razlog prijave radi sigurnosnog pregleda. Pristup imaju samo ovlašteni moderatori.',
       ],
     },
     terms: {
-      title: 'Uslovi korištenja',
-      intro: 'MAHALA web prikazuje javni pregled objava, tema i mapa. Pisanje, glasanje, komentarisanje i puni profil dostupni su u nativnoj aplikaciji.',
+      title: 'Uslovi korištenja (EULA)',
+      intro: 'Ovi uslovi važe za MAHALA aplikaciju i web. Prije registracije ili prijave moraš prihvatiti ove uslove i Politiku privatnosti. Verzija: 8. novembar 2026.',
       items: [
         'Sadržaj se prikazuje informativno i može kasniti u odnosu na aplikaciju.',
         'Korisnik je odgovoran za sadržaj koji objavi, uključujući poštovanje zakona, privatnosti drugih osoba i pravila zajednice.',
         'Zabranjeni su spam, uznemiravanje, govor mržnje, objava tuđih privatnih podataka i pokušaji zaobilaženja sigurnosnih mjera.',
+        'Ne tolerišemo neprikladan sadržaj ni zlostavljanje korisnika. Zabranjeni su pornografija, seksualna eksploatacija, sadržaj koji ugrožava djecu, prijetnje, poticanje nasilja, diskriminacija i objavljivanje intimnog sadržaja bez pristanka.',
+        'Objave, slike, komentari i teme podliježu sigurnosnoj provjeri prije javne objave. Ako provjera nije dostupna, sadržaj se ne objavljuje.',
+        'Na objavi ili komentaru izaberi „Prijavi”, zatim „Prijavi i blokiraj”. Prijava se dostavlja ovlaštenim moderatorima. Sadržaj blokiranog korisnika odmah se uklanja iz tvog prikaza.',
+        'Svaku prijavu pregledamo u roku od 24 sata od slanja. Kada utvrdimo kršenje pravila, uklanjamo neprikladan sadržaj, suspendujemo odgovorni račun i prekidamo njegove aktivne sesije. Ne čekamo veći broj prijava.',
         'Nije dozvoljeno zloupotrebljavati javni prikaz, scraping, automatizovano preuzimanje podataka ili pokušaje ometanja rada servisa.',
         'MAHALA može sakriti, ograničiti ili ukloniti sadržaj i naloge koji krše pravila zajednice, zakon ili sigurnost servisa.',
         'Servis se može mijenjati, privremeno ograničiti ili biti nedostupan zbog održavanja, sigurnosti ili tehničkih problema.',
@@ -1495,6 +1524,7 @@ function LegalPage({ page, onBack }: { page: Exclude<Page, 'app'>; onBack: () =>
             </article>
           ))}
         </div>
+        <p>Za podršku i prijave kontaktiraj MAHALA tim putem <a href="/support">kontakt obrasca</a>.</p>
       </section>
     </main>
   );
@@ -1755,9 +1785,9 @@ export default function App() {
         const topicsData = useStartupBundle
           ? bundlePayload?.data?.topics
           : topicsPayload?.data;
-        const nextTopics = Array.isArray(topicsData)
+        const nextTopics: Topic[] = Array.isArray(topicsData)
           ? topicsData
-              .map(normalizeTopicPayload)
+              .map((topic: unknown) => normalizeTopicPayload(topic))
               .filter((topic) =>
                 topic.general || belongsToAllowedMahalaScopes(topic.mahalaId, allowedScopeIds, mapZones),
               )
@@ -1835,7 +1865,7 @@ export default function App() {
 
   const toggleCurrentMahala = useCallback((id: string) => {
     setEnabledMahalaIds((current) => {
-      const next = new Set(current);
+      const next = new Set<string>(current);
 
       if (next.has(id)) {
         next.delete(id);
@@ -2013,7 +2043,11 @@ export default function App() {
     return (
       <div className="app-shell legal-shell">
         <Header page={page} onPage={navigateToPage} primaryMahala={currentMahalas[0] || null} locationStatus={locationStatus} onLocationPress={handleLocationPress} />
-        <LegalPage page={page} onBack={() => navigateToPage('app')} />
+        {page === 'support'
+          ? <SupportPage onBack={() => navigateToPage('app')} />
+          : page === 'child-safety'
+          ? <ChildSafetyPage onBack={() => navigateToPage('app')} />
+          : <LegalPage page={page} onBack={() => navigateToPage('app')} />}
       </div>
     );
   }

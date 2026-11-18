@@ -10,7 +10,7 @@ RewriteRule ^index\.html$ dist/index.html [L]
 RewriteRule ^$ dist/index.html [L]
 
 # Public legal routes handled by the client router.
-RewriteRule ^(privacy|terms|cookies)/?$ dist/index.html [L]
+RewriteRule ^(privacy|terms|cookies|support|child-safety)/?$ dist/index.html [L]
 
 # If requested path exists inside /dist, serve that file or directory.
 RewriteCond %{DOCUMENT_ROOT}/dist/$1 -f [OR]

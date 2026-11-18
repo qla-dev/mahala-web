@@ -1,0 +1,97 @@
+.child-safety-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+  color: #f4f4f7;
+}
+
+.child-safety-page header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 20px;
+  margin-bottom: 8px;
+}
+
+.child-safety-page .cs-brand {
+  color: #8b5cf6;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  font-size: 14px;
+}
+
+.child-safety-page h1 {
+  font-size: 30px;
+  line-height: 1.2;
+  margin: 6px 0 10px;
+}
+
+.child-safety-page h2 {
+  font-size: 20px;
+  margin: 34px 0 8px;
+}
+
+.child-safety-page .cs-muted {
+  color: #a8a8b8;
+  font-size: 14px;
+}
+
+.child-safety-page ul {
+  padding-left: 22px;
+}
+
+.child-safety-page li {
+  margin: 4px 0;
+}
+
+.child-safety-page a {
+  color: #8b5cf6;
+}
+
+.child-safety-page .cs-lang-nav {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.child-safety-page .cs-lang-nav a {
+  text-decoration: none;
+  color: #f4f4f7;
+  background: #111118;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.child-safety-page .cs-box {
+  background: #111118;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 4px solid #8b5cf6;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 18px 0;
+}
+
+.child-safety-page .cs-lang-section {
+  padding-top: 12px;
+}
+
+.child-safety-page .cs-lang-section + .cs-lang-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 48px;
+}
+
+.child-safety-page .cs-close-button {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: #a8a8b8;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.child-safety-page .cs-header-row {
+  position: relative;
+}
