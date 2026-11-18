@@ -155,11 +155,30 @@ if ($npm === null) {
     exit(127);
 }
 
-$nodeDir = dirname(is_link($npm) ? readlink($npm) ?: $npm : $npm);
-$currentPath = getenv('PATH') ?: '';
-if ($nodeDir !== '' && strpos($currentPath, $nodeDir) === false) {
-    putenv('PATH='.$nodeDir.':'.$currentPath);
-    $write("Added {$nodeDir} to PATH.\n");
+$npmDir = dirname($npm);
+$nodeBin = $findExecutable(array_filter([
+    $npmDir.'/node',
+    dirname($npmDir).'/bin/node',
+    'node',
+    '/usr/local/bin/node',
+    '/usr/bin/node',
+    $homeDir ? $homeDir.'/bin/node' : null,
+    '/opt/alt/alt-nodejs22/root/usr/bin/node',
+    '/opt/alt/alt-nodejs20/root/usr/bin/node',
+    '/opt/alt/alt-nodejs18/root/usr/bin/node',
+    '/opt/cpanel/ea-nodejs22/bin/node',
+    '/opt/cpanel/ea-nodejs20/bin/node',
+    '/opt/cpanel/ea-nodejs18/bin/node',
+]));
+if ($nodeBin !== null) {
+    $nodeDir = dirname($nodeBin);
+    $currentPath = getenv('PATH') ?: '';
+    if (strpos($currentPath, $nodeDir) === false) {
+        putenv('PATH='.$nodeDir.':'.$currentPath);
+        $write("Added {$nodeDir} to PATH for node.\n");
+    }
+} else {
+    $write("Warning: could not find node binary. Build may fail.\n");
 }
 
 $npmCommand = $shellArg($npm);
