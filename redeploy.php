@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 set_time_limit(0);
-ini_set('memory_limit', '512M');
 ini_set('output_buffering', '0');
 ini_set('zlib.output_compression', '0');
 
@@ -31,26 +30,6 @@ $startedAt = time();
 $write = static function (string $message): void {
     echo $message;
     flush();
-};
-$shellArg = static fn (string $value): string => escapeshellarg($value);
-
-$findExecutable = static function (array $commands): ?string {
-    foreach ($commands as $command) {
-        if (str_contains($command, DIRECTORY_SEPARATOR) && is_file($command) && is_executable($command)) {
-            return $command;
-        }
-
-        $check = PHP_OS_FAMILY === 'Windows'
-            ? 'where '.escapeshellarg($command)
-            : 'command -v '.escapeshellarg($command);
-        $output = [];
-        exec($check, $output, $exitCode);
-        if ($exitCode === 0 && isset($output[0]) && $output[0] !== '') {
-            return trim($output[0]);
-        }
-    }
-
-    return null;
 };
 
 $runCommand = static function (string $command, string $cwd, callable $write): int {
@@ -105,88 +84,8 @@ $runCommand = static function (string $command, string $cwd, callable $write): i
     return is_int($exitCode) && $exitCode >= 0 ? $exitCode : $closeCode;
 };
 
-$homeDir = getenv('HOME') ?: (getenv('DOCUMENT_ROOT') ? dirname(getenv('DOCUMENT_ROOT')) : '');
-$npmCandidates = array_filter([
-    'npm',
-    '/usr/local/bin/npm',
-    '/usr/bin/npm',
-    $homeDir ? $homeDir.'/bin/npm' : null,
-    $homeDir ? $homeDir.'/.nvm/current/bin/npm' : null,
-    '/opt/cpanel/ea-nodejs22/bin/npm',
-    '/opt/cpanel/ea-nodejs20/bin/npm',
-    '/opt/cpanel/ea-nodejs18/bin/npm',
-    '/opt/alt/alt-nodejs22/root/usr/bin/npm',
-    '/opt/alt/alt-nodejs20/root/usr/bin/npm',
-    '/opt/alt/alt-nodejs18/root/usr/bin/npm',
-]);
-
-$npm = $findExecutable($npmCandidates);
-
-if ($npm === null) {
-    $nodeCandidates = array_filter([
-        'node',
-        '/usr/local/bin/node',
-        '/usr/bin/node',
-        $homeDir ? $homeDir.'/bin/node' : null,
-        $homeDir ? $homeDir.'/.nvm/current/bin/node' : null,
-        '/opt/cpanel/ea-nodejs22/bin/node',
-        '/opt/cpanel/ea-nodejs20/bin/node',
-        '/opt/cpanel/ea-nodejs18/bin/node',
-        '/opt/alt/alt-nodejs22/root/usr/bin/node',
-        '/opt/alt/alt-nodejs20/root/usr/bin/node',
-        '/opt/alt/alt-nodejs18/root/usr/bin/node',
-    ]);
-    $node = $findExecutable($nodeCandidates);
-    if ($node !== null) {
-        $nodeDir = dirname($node);
-        $npmCandidate = $nodeDir.DIRECTORY_SEPARATOR.'npm';
-        if (is_file($npmCandidate)) {
-            $npm = $npmCandidate;
-        }
-    }
-}
-
-if ($npm === null) {
-    $write("Could not find npm. Searched:\n");
-    foreach ($npmCandidates as $candidate) {
-        $write("  - {$candidate}\n");
-    }
-    $write("Set up Node.js on the server or add its path to the redeploy script.\n");
-    exit(127);
-}
-
-$npmDir = dirname($npm);
-$nodeBin = $findExecutable(array_filter([
-    $npmDir.'/node',
-    dirname($npmDir).'/bin/node',
-    'node',
-    '/usr/local/bin/node',
-    '/usr/bin/node',
-    $homeDir ? $homeDir.'/bin/node' : null,
-    '/opt/alt/alt-nodejs22/root/usr/bin/node',
-    '/opt/alt/alt-nodejs20/root/usr/bin/node',
-    '/opt/alt/alt-nodejs18/root/usr/bin/node',
-    '/opt/cpanel/ea-nodejs22/bin/node',
-    '/opt/cpanel/ea-nodejs20/bin/node',
-    '/opt/cpanel/ea-nodejs18/bin/node',
-]));
-if ($nodeBin !== null) {
-    $nodeDir = dirname($nodeBin);
-    $currentPath = getenv('PATH') ?: '';
-    if (strpos($currentPath, $nodeDir) === false) {
-        putenv('PATH='.$nodeDir.':'.$currentPath);
-        $write("Added {$nodeDir} to PATH for node.\n");
-    }
-} else {
-    $write("Warning: could not find node binary. Build may fail.\n");
-}
-
-$npmCommand = $shellArg($npm);
-
 $commands = [
-    ['label' => 'Pulling latest code', 'command' => 'git pull --ff-only'],
-    ['label' => 'Installing npm dependencies', 'command' => $npmCommand.' ci --no-audit --no-fund'],
-    ['label' => 'Building production bundle', 'command' => $npmCommand.' run build'],
+    ['label' => 'Pulling latest code and build', 'command' => 'git pull --ff-only'],
 ];
 
 foreach ($commands as $step) {
