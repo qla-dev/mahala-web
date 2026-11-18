@@ -1,5 +1,8 @@
 RewriteEngine On
 
+# Let PHP scripts execute directly.
+RewriteRule \.php$ - [L]
+
 # Prevent rewrite loops once request is already inside /dist.
 RewriteRule ^dist/ - [L]
 
