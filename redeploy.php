@@ -105,10 +105,53 @@ $runCommand = static function (string $command, string $cwd, callable $write): i
     return is_int($exitCode) && $exitCode >= 0 ? $exitCode : $closeCode;
 };
 
-$npm = $findExecutable(['npm', '/usr/local/bin/npm', '/usr/bin/npm']);
+$homeDir = getenv('HOME') ?: (getenv('DOCUMENT_ROOT') ? dirname(getenv('DOCUMENT_ROOT')) : '');
+$npmCandidates = array_filter([
+    'npm',
+    '/usr/local/bin/npm',
+    '/usr/bin/npm',
+    $homeDir ? $homeDir.'/bin/npm' : null,
+    $homeDir ? $homeDir.'/.nvm/current/bin/npm' : null,
+    '/opt/cpanel/ea-nodejs22/bin/npm',
+    '/opt/cpanel/ea-nodejs20/bin/npm',
+    '/opt/cpanel/ea-nodejs18/bin/npm',
+    '/opt/alt/alt-nodejs22/root/usr/bin/npm',
+    '/opt/alt/alt-nodejs20/root/usr/bin/npm',
+    '/opt/alt/alt-nodejs18/root/usr/bin/npm',
+]);
+
+$npm = $findExecutable($npmCandidates);
 
 if ($npm === null) {
-    $write("Could not find npm.\n");
+    $nodeCandidates = array_filter([
+        'node',
+        '/usr/local/bin/node',
+        '/usr/bin/node',
+        $homeDir ? $homeDir.'/bin/node' : null,
+        $homeDir ? $homeDir.'/.nvm/current/bin/node' : null,
+        '/opt/cpanel/ea-nodejs22/bin/node',
+        '/opt/cpanel/ea-nodejs20/bin/node',
+        '/opt/cpanel/ea-nodejs18/bin/node',
+        '/opt/alt/alt-nodejs22/root/usr/bin/node',
+        '/opt/alt/alt-nodejs20/root/usr/bin/node',
+        '/opt/alt/alt-nodejs18/root/usr/bin/node',
+    ]);
+    $node = $findExecutable($nodeCandidates);
+    if ($node !== null) {
+        $nodeDir = dirname($node);
+        $npmCandidate = $nodeDir.DIRECTORY_SEPARATOR.'npm';
+        if (is_file($npmCandidate)) {
+            $npm = $npmCandidate;
+        }
+    }
+}
+
+if ($npm === null) {
+    $write("Could not find npm. Searched:\n");
+    foreach ($npmCandidates as $candidate) {
+        $write("  - {$candidate}\n");
+    }
+    $write("Set up Node.js on the server or add its path to the redeploy script.\n");
     exit(127);
 }
 
