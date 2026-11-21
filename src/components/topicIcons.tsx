@@ -30,16 +30,16 @@ export const GENERAL_TOPIC_BADGE_COLOR = '#d1d5db';
 export const generalTopicIconMap: Record<string, string> = {
   glavna: 'chatbubble-ellipses',
   eventi: 'calendar',
-  // spotted: 'eye',
+  spotted: 'eye',
   posao: 'briefcase',
   ljubimci: 'paw',
   'izgubljeno-i-nadjeno': 'search',
-  // politika: 'megaphone',
+  politika: 'megaphone',
   'nocna-smjena': 'moon',
   gaming: 'game-controller',
   sport: 'football',
   'prodajem-i-kupujem': 'pricetag',
-  // dating: 'heart',
+  dating: 'heart',
 };
 
 const topicIconMap: Record<string, LucideIcon> = {
@@ -74,5 +74,5 @@ export function resolveTopicIcon(topic: IconTopic) {
 }
 
 export function resolveTopicIconSize(topic: IconTopic, fallbackSize: number) {
-  return fallbackSize;
+  return (topic.slug || topic.key) === 'spotted' ? fallbackSize + 3 : fallbackSize;
 }

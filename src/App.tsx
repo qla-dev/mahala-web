@@ -172,16 +172,16 @@ const fallbackTopics: Topic[] = [
   { id: 'sve', name: 'sve', slug: 'sve', count: 0, color: '#d1d5db', icon: 'chatbubble-ellipses', general: true },
   { id: 'glavna', name: 'glavna', slug: 'glavna', count: 0, description: 'Glavni lokalni tok za sve oko tebe', color: '#d1d5db', icon: 'chatbubble-ellipses', premium: false, general: true },
   { id: 'eventi', name: 'eventi', slug: 'eventi', count: 0, description: 'Dešavanja, okupljanja, svirke i lokalni događaji', color: '#d1d5db', icon: 'calendar', premium: false, general: true },
-  // { id: 'spotted', name: 'spotted', slug: 'spotted', count: 0, description: 'Susreti u prolazu i potraga za osobom koju nisi stigao upoznati', color: '#d1d5db', icon: 'eye', premium: false, general: true },
+  { id: 'spotted', name: 'spotted', slug: 'spotted', count: 0, description: 'Susreti u prolazu i potraga za osobom koju nisi stigao upoznati', color: '#d1d5db', icon: 'eye', premium: false, general: true },
   { id: 'posao', name: 'posao', slug: 'posao', count: 0, description: 'Poslovi, smjene, preporuke i lokalne prilike za rad', color: '#d1d5db', icon: 'briefcase', premium: false, general: true },
   { id: 'ljubimci', name: 'ljubimci', slug: 'ljubimci', count: 0, description: 'Ljubimci, parkovi, šetnje i komšijske šapice', color: '#d1d5db', icon: 'paw', premium: false, general: true },
   { id: 'izgubljeno-i-nadjeno', name: 'izgubljeno_i_nadjeno', slug: 'izgubljeno-i-nadjeno', count: 0, description: 'Objave o izgubljenim stvarima, pronalascima i komšijskoj pomoći', color: '#d1d5db', icon: 'search', premium: false, general: true },
-  // { id: 'politika', name: 'politika', slug: 'politika', count: 0, description: 'Vruće teme, lokalni pritisak i gradske priče', color: '#d1d5db', icon: 'megaphone', premium: false, general: true },
+  { id: 'politika', name: 'politika', slug: 'politika', count: 0, description: 'Vruće teme, lokalni pritisak i gradske priče', color: '#d1d5db', icon: 'megaphone', premium: false, general: true },
   { id: 'nocna-smjena', name: 'nocna_smjena', slug: 'noćna-smjena', count: 0, description: 'Kasni satovi, noćne dojave i ekipa koja je još budna', color: '#d1d5db', icon: 'moon', premium: false, general: true },
   { id: 'gaming', name: 'gaming', slug: 'gaming', count: 0, description: 'Igre, ekipe, turniri i gejming dogovori', color: '#d1d5db', icon: 'game-controller', premium: false, general: true },
   { id: 'sport', name: 'sport', slug: 'sport', count: 0, description: 'Utakmice, treninzi, rekreacija i lokalni sportski razgovori', color: '#d1d5db', icon: 'football', premium: false, general: true },
   { id: 'prodajem-i-kupujem', name: 'prodajem_i_kupujem', slug: 'prodajem-i-kupujem', count: 0, description: 'Kupovina, prodaja, razmjena i lokalne ponude', color: '#d1d5db', icon: 'pricetag', premium: true, general: true },
-  // { id: 'dating', name: 'dating', slug: 'dating', count: 0, description: 'Upoznavanje, izlasci i lokalne simpatije', color: '#d1d5db', icon: 'heart', premium: true, general: true },
+  { id: 'dating', name: 'dating', slug: 'dating', count: 0, description: 'Upoznavanje, izlasci i lokalne simpatije', color: '#d1d5db', icon: 'heart', premium: true, general: true },
 ];
 
 const fallbackPosts: Post[] = [
