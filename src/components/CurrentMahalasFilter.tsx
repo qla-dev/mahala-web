@@ -94,7 +94,7 @@ export function CurrentMahalasSheet({
         <div className="current-mahalas-sheet-header">
           <div>
             <h2>MAHALE u kojima se nalazim</h2>
-            <p>Filtriraj objave i teme iz zeljenih MAHALA</p>
+            <p>Filtriraj objave i teme iz željenih MAHALA</p>
           </div>
           <button
             type="button"

@@ -107,7 +107,7 @@ export default function PostDetail({
             <div className="feed-empty-state compact reply-empty-state">
               <LottieBox className="feed-empty-lottie" />
               <h2>Nema komentara</h2>
-              <p>Ova objava nema komentara. Budi prvi koji ce pokrenuti diskusiju.</p>
+              <p>Ova objava nema komentara. Budi prvi koji će pokrenuti diskusiju.</p>
             </div>
           )}
         </div>
@@ -115,7 +115,7 @@ export default function PostDetail({
         <div className="detail-composer-bar">
           <button type="button" className="detail-composer-gate" onClick={openDownloadGate}>
             <MessageCircle size={17} />
-            Komentarisi u aplikaciji
+            Komentariši u aplikaciji
           </button>
         </div>
       </div>

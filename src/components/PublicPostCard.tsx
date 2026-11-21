@@ -56,7 +56,7 @@ export default function PublicPostCard({
         role="button"
         tabIndex={0}
         onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
+          if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
             event.preventDefault();
             onClick();
           }
@@ -78,11 +78,14 @@ export default function PublicPostCard({
       </span>
       <span className="public-post-content"><strong>{author}{hasContent ? ' kaže' : ''}</strong>{hasContent ? ` ${post.content}` : ''}</span>
         <span className="public-post-footer">
-          <button type="button" className="public-post-pill" onClick={(event) => event.stopPropagation()}>
+          <button type="button" className="public-post-pill" onClick={(event) => {
+            event.stopPropagation();
+            onClick();
+          }}>
             <MessageCircle size={13} />
             {post.comments} komentara
           </button>
-          <button type="button" className="public-post-pill" onClick={(event) => event.stopPropagation()}>
+          <button type="button" className="public-post-pill" onClick={openDownloadGate}>
             <Bell size={13} />
             Drot
           </button>

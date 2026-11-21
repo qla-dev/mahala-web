@@ -191,7 +191,7 @@ const fallbackPosts: Post[] = [
     topicName: 'Glavna',
     author: '@komšija',
     mahala: 'Dobrinja',
-    content: 'Jutros opet guzva kod kruznog. Ima li iko info kad zavrsavaju radove?',
+    content: 'Jutros opet gužva kod kružnog. Ima li iko info kad završavaju radove?',
     timeAgo: 'prije 8 min',
     votes: 126,
     upvotes: 126,
@@ -202,14 +202,14 @@ const fallbackPosts: Post[] = [
       {
         id: 'r1',
         author: '@komšija',
-        content: 'Tabla kaze do petka, ali realno ovo ide i sljedece sedmice.',
+        content: 'Tabla kaže do petka, ali realno ovo ide i sljedeće sedmice.',
         votes: 49,
         comments: 4,
       },
       {
         id: 'r2',
         author: '@dobrinjac',
-        content: 'Najbrze je preko C5 pa nazad prema centru.',
+        content: 'Najbrže je preko C5 pa nazad prema centru.',
         votes: 31,
         comments: 2,
       },
@@ -218,7 +218,7 @@ const fallbackPosts: Post[] = [
   {
     id: 'p2',
     topicId: 'komsiluk',
-    topicName: 'Komsiluk',
+    topicName: 'Komšiluk',
     author: '@hiperbola_55',
     mahala: 'C5',
     content: 'Ko je ostavio ključeve kod lifta u trećem ulazu, kod portira su.',
@@ -232,7 +232,7 @@ const fallbackPosts: Post[] = [
       {
         id: 'r3',
         author: '@kodzica123',
-        content: 'Javljam komsinici, mislim da su njeni.',
+        content: 'Javljam komšinici, mislim da su njeni.',
         votes: 18,
         comments: 1,
       },
@@ -255,7 +255,7 @@ const fallbackPosts: Post[] = [
       {
         id: 'r4',
         author: '@owl9300',
-        content: 'Saljem broj u inbox, covjek je korektan i dodje isti dan.',
+        content: 'Šaljem broj u inbox, čovjek je korektan i dođe isti dan.',
         votes: 27,
         comments: 3,
       },
@@ -264,9 +264,9 @@ const fallbackPosts: Post[] = [
   {
     id: 'p4',
     topicId: 'desavanja',
-    topicName: 'Desavanja',
+    topicName: 'Dešavanja',
     author: '@rajvosa',
-    mahala: 'Bascarsija',
+    mahala: 'Baščaršija',
     content: 'Večeras mali koncert kod Vijećnice, izgleda fino za prošetati.',
     timeAgo: 'prije 2h',
     votes: 203,
@@ -919,10 +919,10 @@ function Header({
     }
 
     if (locationStatus !== 'granted') {
-      return 'Lokacije nedostupna';
+      return 'Lokacija nedostupna';
     }
 
-    return primaryMahala?.name || 'Lokacije nedostupna';
+    return primaryMahala?.name || 'Lokacija nedostupna';
   })();
   const menuItems: Array<{ page: Page; label: string }> = [
     { page: 'support', label: 'Kontakt i sigurnost' },
@@ -1219,9 +1219,9 @@ function FeedPanel({
       return {
         title: 'Lokacija nije dostupna',
         body: window.isSecureContext
-          ? 'Browser trenutno ne podrzava lokaciju. Otvori MAHALA web u modernom browseru.'
-          : 'Lokacija u browseru radi samo preko HTTPS ili localhost. Na ovoj Not secure adresi browser nece prikazati prompt.',
-        action: window.isSecureContext ? 'Pokusaj ponovo' : 'Otvori preko HTTPS',
+          ? 'Browser trenutno ne podržava lokaciju. Otvori MAHALA web u modernom browseru.'
+          : 'Lokacija u browseru radi samo preko HTTPS ili localhost. Na ovoj Not secure adresi browser neće prikazati prompt.',
+        action: window.isSecureContext ? 'Pokušaj ponovo' : 'Otvori preko HTTPS',
       };
     }
 
@@ -1235,15 +1235,15 @@ function FeedPanel({
 
     if (locationStatus === 'error') {
       return {
-        title: 'Lokacija nije ucitana',
-        body: 'Nismo mogli procitati tvoju lokaciju. Provjeri browser dozvole i pokusaj ponovo.',
-        action: 'Pokusaj ponovo',
+        title: 'Lokacija nije učitana',
+        body: 'Nismo mogli pročitati tvoju lokaciju. Provjeri browser dozvole i pokušaj ponovo.',
+        action: 'Pokušaj ponovo',
       };
     }
 
     return {
       title: 'Dopustite lokaciju',
-      body: 'Dopustite lokaciju za ucitavanje objava i tema iz MAHALA u tvojoj blizini.',
+      body: 'Dopustite lokaciju za učitavanje objava i tema iz MAHALA u tvojoj blizini.',
       action: locationStatus === 'locating' ? 'Lociranje...' : 'Dopusti lokaciju',
     };
   })();
@@ -1297,7 +1297,7 @@ function FeedPanel({
                 />
               ))}
               {loadingMore ? FEED_SKELETONS.slice(0, 2).map((item) => <FeedSkeletonCard key={`more-${item}`} compact />) : null}
-              {!loadingMore && !hasMore ? <div className="feed-end-label">Nema vise objava</div> : null}
+              {!loadingMore && !hasMore ? <div className="feed-end-label">Nema više objava</div> : null}
             </>
           )}
           </div>
@@ -1444,10 +1444,10 @@ function MahalaMap({
         </button>
       </div>
       <div className="map-controls map-controls-right" aria-label="Lokacija">
-        <button type="button" disabled={!userCoordinate} aria-label="Lociraj sire" onClick={() => triggerLocate('far')}>
+        <button type="button" disabled={!userCoordinate} aria-label="Lociraj šire" onClick={() => triggerLocate('far')}>
           <Search size={17} />
         </button>
-        <button type="button" disabled={!userCoordinate} aria-label="Lociraj blize" onClick={() => triggerLocate('near')}>
+        <button type="button" disabled={!userCoordinate} aria-label="Lociraj bliže" onClick={() => triggerLocate('near')}>
           <Navigation size={17} />
         </button>
       </div>

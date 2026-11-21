@@ -48,6 +48,11 @@ button {
   border: 0;
 }
 
+button:where(:enabled),
+a:where([href]) {
+  cursor: pointer;
+}
+
 .app-shell {
   position: fixed;
   inset: 0;
