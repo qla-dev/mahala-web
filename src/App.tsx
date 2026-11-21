@@ -3,11 +3,13 @@ import type { ReactNode, TouchEvent } from 'react';
 import ChildSafetyPage from './components/ChildSafetyPage';
 import SupportPage from './components/SupportPage';
 import {
+  CircleMarker,
   MapContainer,
   Polygon,
   TileLayer,
   Tooltip,
   useMap,
+  useMapEvents,
 } from 'react-leaflet';
 import L from 'leaflet';
 import lottie from 'lottie-web';
@@ -87,6 +89,11 @@ type PageMeta = {
 };
 
 const DEFAULT_CENTER: [number, number] = [43.8563, 18.4131];
+const INITIAL_MAP_ZOOM = 12;
+const SARAJEVO_CITY_LABEL_MIN_ZOOM = 10;
+const SARAJEVO_DISTRICT_LABEL_MIN_ZOOM = 11;
+const LEVEL_1_MAHALA_MIN_ZOOM = 12.3;
+const LEVEL_2_MAHALA_MIN_ZOOM = 13.6;
 const MOBILE_QUERY = '(max-width: 920px)';
 const FEED_SORT_TABS = [
   { id: 'recent', label: 'Najnovije objave' },
@@ -1376,15 +1383,113 @@ function TopicFeedScreen({
   );
 }
 
-function MahalaMap({
+function MahalaMapBoundaries({
   zones,
   selectedZone,
   userCoordinate,
+  currentMahalas,
+  mutedMahalaIds,
+  mapType,
   onZone,
 }: {
   zones: Zone[];
   selectedZone: Zone | null;
   userCoordinate: Coordinate | null;
+  currentMahalas: Zone[];
+  mutedMahalaIds: Set<string>;
+  mapType: MapType;
+  onZone: (zone: Zone) => void;
+}) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(() => map.getZoom());
+  useMapEvents({
+    zoomend: () => setZoom(map.getZoom()),
+  });
+
+  const currentMahalaIds = useMemo(() => new Set(currentMahalas.map((zone) => zone.id)), [currentMahalas]);
+  const inSarajevo = currentMahalaIds.has(SARAJEVO_MAHALA_ZONE.id);
+  const groupCurrentLabels = userCoordinate !== null && zoom < LEVEL_2_MAHALA_MIN_ZOOM;
+  const showCityLabel = (inSarajevo && !groupCurrentLabels) || (!inSarajevo &&
+    zoom >= SARAJEVO_CITY_LABEL_MIN_ZOOM && zoom < SARAJEVO_DISTRICT_LABEL_MIN_ZOOM
+  );
+
+  return (
+    <>
+      {zones.map((zone) => {
+        const level = Number(zone.level);
+        const isDistrict = level === 0;
+        const levelMinZoom = level === 1 ? LEVEL_1_MAHALA_MIN_ZOOM : LEVEL_2_MAHALA_MIN_ZOOM;
+        const locationId = isDistrict ? `sarajevo-arena:${zone.id}` : zone.id;
+        const isCurrent = currentMahalaIds.has(locationId);
+        if (!isDistrict && !isCurrent && zoom < levelMinZoom) {
+          return null;
+        }
+
+        const selected = selectedZone?.id === zone.id;
+        const muted = isCurrent && mutedMahalaIds.has(locationId);
+        const color = muted ? '#64748b' : isDistrict ? '#7c3aed' : level === 1 ? '#8b5cf6' : '#10b981';
+        const emphasized = selected || isCurrent;
+        const name = isDistrict ? getSarajevoArenaName(zone.name) : zone.name;
+        const showLabel = isCurrent
+          ? !groupCurrentLabels
+          : zoom >= (isDistrict ? SARAJEVO_DISTRICT_LABEL_MIN_ZOOM : levelMinZoom);
+        const labelPosition: [number, number] | undefined = zone.center
+          ? [zone.center.latitude, zone.center.longitude]
+          : undefined;
+
+        return (
+          <Polygon
+            key={zone.id}
+            positions={[polygonPath(zone), ...(zone.holes || []).map((ring) =>
+              ring.map(({ latitude, longitude }): [number, number] => [latitude, longitude]),
+            )]}
+            pathOptions={{
+              color: selected && !muted ? (mapType === 'light' ? '#5b21b6' : '#f8fafc') : color,
+              fillColor: color,
+              fillOpacity: mapType === 'light' ? (emphasized ? 0.16 : 0.04) : (emphasized ? 0.4 : 0.16),
+              weight: emphasized ? 3 : 1.4,
+            }}
+            eventHandlers={{ click: () => onZone(zone) }}
+          >
+            {showLabel ? (
+              <Tooltip className="map-zone-label" direction="center" position={labelPosition} permanent>
+                {name}
+              </Tooltip>
+            ) : null}
+          </Polygon>
+        );
+      })}
+      {showCityLabel ? (
+        <CircleMarker center={DEFAULT_CENTER} radius={0} interactive={false}>
+          <Tooltip className="map-zone-label map-city-label" direction="center" permanent>Sarajevo</Tooltip>
+        </CircleMarker>
+      ) : null}
+      {userCoordinate && groupCurrentLabels && currentMahalas.length > 0 ? (
+        <CircleMarker center={[userCoordinate.latitude, userCoordinate.longitude]} radius={0} interactive={false}>
+          <Tooltip className="map-current-zone-labels" direction="bottom" offset={[0, 24]} permanent>
+            {currentMahalas.map(({ id, name }) => (
+              <span key={id} className={mutedMahalaIds.has(id) ? 'map-zone-label muted' : 'map-zone-label'}>{name}</span>
+            ))}
+          </Tooltip>
+        </CircleMarker>
+      ) : null}
+    </>
+  );
+}
+
+function MahalaMap({
+  zones,
+  selectedZone,
+  userCoordinate,
+  currentMahalas,
+  mutedMahalaIds,
+  onZone,
+}: {
+  zones: Zone[];
+  selectedZone: Zone | null;
+  userCoordinate: Coordinate | null;
+  currentMahalas: Zone[];
+  mutedMahalaIds: Set<string>;
   onZone: (zone: Zone) => void;
 }) {
   const [mapType, setMapType] = useState<MapType>('light');
@@ -1399,35 +1504,13 @@ function MahalaMap({
 
   return (
     <div className={`map-shell map-${mapType}`}>
-      <MapContainer center={DEFAULT_CENTER} zoom={12} minZoom={8} className="map-view" zoomControl={false}>
+      <MapContainer center={DEFAULT_CENTER} zoom={INITIAL_MAP_ZOOM} minZoom={8} zoomSnap={0.25} className="map-view" zoomControl={false}>
         <TileLayer
           key={mapType}
           attribution={MAP_TILE_ATTRIBUTION[mapType]}
           url={MAP_TILESETS[mapType]}
         />
-        {zones.map((zone) => {
-          const selected = selectedZone?.id === zone.id;
-          const color = Number(zone.level) === 0
-            ? '#7c3aed'
-            : Number(zone.level) === 1
-              ? '#8b5cf6'
-              : '#10b981';
-          return (
-            <Polygon
-              key={zone.id}
-              positions={polygonPath(zone)}
-              pathOptions={{
-                color: selected ? (mapType === 'light' ? '#5b21b6' : '#f8fafc') : color,
-                fillColor: color,
-                fillOpacity: mapType === 'light' ? (selected ? 0.16 : 0.04) : (selected ? 0.4 : 0.16),
-                weight: selected ? 3 : 1.4,
-              }}
-              eventHandlers={{ click: () => onZone(zone) }}
-            >
-              <Tooltip sticky direction="top">{zone.name}</Tooltip>
-            </Polygon>
-          );
-        })}
+        <MahalaMapBoundaries zones={zones} selectedZone={selectedZone} userCoordinate={userCoordinate} currentMahalas={currentMahalas} mutedMahalaIds={mutedMahalaIds} mapType={mapType} onZone={onZone} />
         <UserLottieMarker coordinate={userCoordinate} />
         <MapCommandController command={mapCommand} userCoordinate={userCoordinate} />
         <FitZone zone={selectedZone} />
@@ -1580,7 +1663,7 @@ export default function App() {
   const locationRequestIdRef = useRef(0);
   const mapZones = useMemo(() => [...sarajevoZones, ...zones], [sarajevoZones, zones]);
   const enabledMahalaIds = useMemo(
-    () => new Set(currentMahalas.map((zone) => String(zone.id)).filter((id) => !mutedMahalaIds.has(id))),
+    () => new Set(currentMahalas.map((zone) => zone.id).filter((id) => !mutedMahalaIds.has(id))),
     [currentMahalas, mutedMahalaIds],
   );
   const enabledFeedScopeIds = useMemo(
@@ -1954,12 +2037,6 @@ export default function App() {
     [posts, selectedTopic],
   );
 
-  useEffect(() => {
-    if (!selectedZone && mapZones.length > 0) {
-      setSelectedZone(mapZones[0]);
-    }
-  }, [mapZones, selectedZone]);
-
   const handleLocationPress = useCallback(() => {
     if (locationStatus === 'granted' && currentMahalas.length > 0) {
       setCurrentMahalasSheetOpen(true);
@@ -2041,7 +2118,7 @@ export default function App() {
         <div className="desktop-left">
           {appBody}
         </div>
-        <MahalaMap zones={mapZones} selectedZone={selectedZone} userCoordinate={userCoordinate} onZone={setSelectedZone} />
+        <MahalaMap zones={mapZones} selectedZone={selectedZone} userCoordinate={userCoordinate} currentMahalas={currentMahalas} mutedMahalaIds={mutedMahalaIds} onZone={setSelectedZone} />
         <aside className="desktop-right">
           <TopicDetailPanel topics={topics} activeTopic={selectedTopicId || ''} onTopic={openTopicScreen} />
         </aside>
@@ -2066,7 +2143,7 @@ export default function App() {
       <main className="mobile-layout">
         <div className={`mobile-scroll ${mobileView === 'map' ? 'map-mobile-scroll' : ''}`}>
           {mobileView === 'feed' ? appBody : null}
-          {mobileView === 'map' ? <MahalaMap zones={mapZones} selectedZone={selectedZone} userCoordinate={userCoordinate} onZone={setSelectedZone} /> : null}
+          {mobileView === 'map' ? <MahalaMap zones={mapZones} selectedZone={selectedZone} userCoordinate={userCoordinate} currentMahalas={currentMahalas} mutedMahalaIds={mutedMahalaIds} onZone={setSelectedZone} /> : null}
           {mobileView === 'topics' ? (
             selectedTopic ? appBody : <PublicTopicsPanel topics={topics} activeTopic={selectedTopicId || ''} onTopic={openTopicScreen} />
           ) : null}

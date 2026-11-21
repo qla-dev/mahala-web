@@ -1517,6 +1517,37 @@ a:where([href]) {
   filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(1.1);
 }
 
+.map-zone-label.leaflet-tooltip,
+.map-current-zone-labels.leaflet-tooltip {
+  border-color: rgba(255, 255, 255, 0.24);
+  border-radius: 8px;
+  background: rgba(17, 17, 24, 0.9);
+  color: #f8fafc;
+  padding: 3px 7px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.map-light .map-zone-label.leaflet-tooltip,
+.map-light .map-current-zone-labels.leaflet-tooltip {
+  border-color: #ddd6fe;
+  background: rgba(255, 255, 255, 0.96);
+  color: #4c1d95;
+}
+
+.map-city-label.leaflet-tooltip {
+  font-size: 14px;
+}
+
+.map-current-zone-labels .map-zone-label {
+  display: block;
+  padding-inline: 3px;
+}
+
+.map-current-zone-labels .map-zone-label.muted {
+  opacity: 0.65;
+}
+
 .leaflet-control-attribution {
   border-radius: 10px 0 0 0;
   background: rgba(0, 0, 0, 0.55) !important;
