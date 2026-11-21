@@ -92,8 +92,7 @@ type PageMeta = {
 };
 
 const DEFAULT_CENTER: [number, number] = [43.8563, 18.4131];
-const INITIAL_MAP_CENTER: [number, number] = [44.15, 17.79];
-const INITIAL_MAP_ZOOM = 7;
+const INITIAL_MAP_ZOOM = 9;
 const MAP_LOCATE_ZOOM = 10;
 const MAP_DETAIL_ZOOM = 15;
 const SARAJEVO_CITY_LABEL_MIN_ZOOM = 10;
@@ -1459,7 +1458,7 @@ function MahalaMapCoverage({
   inSarajevo,
   mapType,
 }: {
-  coordinate: Coordinate | null;
+  coordinate: Coordinate;
   country: MapArea | undefined;
   inSarajevo: boolean;
   mapType: MapType;
@@ -1468,7 +1467,7 @@ function MahalaMapCoverage({
 
   useEffect(() => {
     setRegion(null);
-    if (!coordinate || !country || inSarajevo) {
+    if (!country || inSarajevo) {
       return;
     }
 
@@ -1485,20 +1484,20 @@ function MahalaMapCoverage({
 
   return (
     <Pane name="mahala-coverage" style={{ zIndex: 390 }}>
-      {(coordinate ? (country ? [country] : []) : mapCountries).map((area) => (
+      {country ? (
         <Polygon
-          key={area.id}
-          positions={area.polygons as L.LatLngTuple[][][]}
+          key={country.id}
+          positions={country.polygons as L.LatLngTuple[][][]}
           interactive={false}
           pathOptions={{
             color: mapType === 'light' ? '#0f172a' : '#fff',
             opacity: mapType === 'light' ? 0.78 : 0.82,
             weight: 2,
             fillColor: 'var(--mahala-city)',
-            fillOpacity: country?.id === area.id ? 0.22 : 0,
+            fillOpacity: 0.22,
           }}
         />
-      ))}
+      ) : null}
       {region && !inSarajevo ? (
         <Polygon
           key={region.id}
@@ -1632,33 +1631,29 @@ function MahalaMap({
     () => userCoordinate ? getContainingMapArea(mapCountries, userCoordinate) : undefined,
     [userCoordinate],
   );
-  const showSarajevo = !userCoordinate || inSarajevo;
   const visibleZones = useMemo(() => {
-    if (!userCoordinate) {
-      return zones;
-    }
     const currentIds = new Set(currentMahalas.map((zone) => zone.id));
     return zones.filter((zone) => {
       if (zone.level === 0) {
-        return showSarajevo;
+        return inSarajevo;
       }
       return currentIds.has(zone.id) || Boolean(country && (
         (zone.center && mapAreaContains(country, zone.center)) ||
         zone.coordinates.some((coordinate) => mapAreaContains(country, coordinate))
       ));
     });
-  }, [country, currentMahalas, showSarajevo, userCoordinate, zones]);
+  }, [country, currentMahalas, inSarajevo, zones]);
   const triggerLocate = (type: 'near' | 'far') => {
-    if (!userCoordinate) {
-      return;
-    }
-
     setMapCommand({ id: Date.now(), type });
   };
 
+  if (!userCoordinate) {
+    return <div className={`map-shell map-${mapType}`} />;
+  }
+
   return (
     <div className={`map-shell map-${mapType}`}>
-      <MapContainer center={INITIAL_MAP_CENTER} zoom={INITIAL_MAP_ZOOM} zoomSnap={0.25} className="map-view" zoomControl={false}>
+      <MapContainer center={[userCoordinate.latitude, userCoordinate.longitude]} zoom={INITIAL_MAP_ZOOM} zoomSnap={0.25} className="map-view" zoomControl={false}>
         <TileLayer
           key={mapType}
           attribution={MAP_TILE_ATTRIBUTION[mapType]}
@@ -1670,7 +1665,7 @@ function MahalaMap({
           inSarajevo={inSarajevo}
           mapType={mapType}
         />
-        <MahalaMapBoundaries zones={visibleZones} showSarajevo={showSarajevo} selectedZone={selectedZone} userCoordinate={userCoordinate} currentMahalas={currentMahalas} mutedMahalaIds={mutedMahalaIds} onZone={onZone} />
+        <MahalaMapBoundaries zones={visibleZones} showSarajevo={inSarajevo} selectedZone={selectedZone} userCoordinate={userCoordinate} currentMahalas={currentMahalas} mutedMahalaIds={mutedMahalaIds} onZone={onZone} />
         <UserLottieMarker coordinate={userCoordinate} />
         <MapCommandController command={mapCommand} userCoordinate={userCoordinate} />
         <FitZone zone={selectedZone} />
@@ -1687,10 +1682,10 @@ function MahalaMap({
         </button>
       </div>
       <div className="map-controls map-controls-right" aria-label="Lokacija">
-        <button type="button" disabled={!userCoordinate} aria-label="Lociraj šire" onClick={() => triggerLocate('far')}>
+        <button type="button" aria-label="Lociraj šire" onClick={() => triggerLocate('far')}>
           <Search size={17} />
         </button>
-        <button type="button" disabled={!userCoordinate} aria-label="Lociraj bliže" onClick={() => triggerLocate('near')}>
+        <button type="button" aria-label="Lociraj bliže" onClick={() => triggerLocate('near')}>
           <Navigation size={17} />
         </button>
       </div>
