@@ -647,18 +647,12 @@ function getZoneComparableIds(zone: Zone) {
   );
 }
 
-function isSpecificCurrentMahala(zone: Zone) {
-  return Number(zone.level) > 0 || zone.type === 'userMahala';
-}
-
 function getFeedScopeIds(zones: Zone[], enabledIds?: Set<string>) {
-  const visibleZones = enabledIds
+  const enabledZones = enabledIds
     ? zones.filter((zone) => enabledIds.has(String(zone.id)))
     : zones;
-  const specificZones = visibleZones.filter(isSpecificCurrentMahala);
-  const sourceZones = specificZones.length > 0 ? specificZones : visibleZones;
 
-  return [...new Set(sourceZones.map((zone) => String(getMahalaApiScopeId(zone))))];
+  return [...new Set(enabledZones.map((zone) => String(getMahalaApiScopeId(zone))))];
 }
 
 function belongsToAllowedMahalaScopes(
@@ -1393,7 +1387,7 @@ function MahalaMap({
   userCoordinate: Coordinate | null;
   onZone: (zone: Zone) => void;
 }) {
-  const [mapType, setMapType] = useState<MapType>('dark');
+  const [mapType, setMapType] = useState<MapType>('light');
   const [mapCommand, setMapCommand] = useState<MapCommand>(null);
   const triggerLocate = (type: 'near' | 'far') => {
     if (!userCoordinate) {
@@ -1404,7 +1398,7 @@ function MahalaMap({
   };
 
   return (
-    <div className={`map-shell ${mapType === 'dark' ? 'map-dark' : ''}`}>
+    <div className={`map-shell map-${mapType}`}>
       <MapContainer center={DEFAULT_CENTER} zoom={12} minZoom={8} className="map-view" zoomControl={false}>
         <TileLayer
           key={mapType}
@@ -1423,9 +1417,9 @@ function MahalaMap({
               key={zone.id}
               positions={polygonPath(zone)}
               pathOptions={{
-                color: selected ? '#f8fafc' : color,
+                color: selected ? (mapType === 'light' ? '#5b21b6' : '#f8fafc') : color,
                 fillColor: color,
-                fillOpacity: selected ? 0.4 : 0.16,
+                fillOpacity: mapType === 'light' ? (selected ? 0.16 : 0.04) : (selected ? 0.4 : 0.16),
                 weight: selected ? 3 : 1.4,
               }}
               eventHandlers={{ click: () => onZone(zone) }}
@@ -1439,13 +1433,13 @@ function MahalaMap({
         <FitZone zone={selectedZone} />
       </MapContainer>
       <div className="map-controls map-controls-left" aria-label="Tip mape">
-        <button type="button" className={mapType === 'dark' ? 'active' : ''} aria-label="Tamna mapa" onClick={() => setMapType('dark')}>
+        <button type="button" className={mapType === 'dark' ? 'active' : ''} aria-label="Tamna mapa" aria-pressed={mapType === 'dark'} onClick={() => setMapType('dark')}>
           <Moon size={17} />
         </button>
-        <button type="button" className={mapType === 'light' ? 'active' : ''} aria-label="Svjetla mapa" onClick={() => setMapType('light')}>
+        <button type="button" className={mapType === 'light' ? 'active' : ''} aria-label="Svjetla mapa" aria-pressed={mapType === 'light'} onClick={() => setMapType('light')}>
           <Sun size={17} />
         </button>
-        <button type="button" className={mapType === 'satellite' ? 'active' : ''} aria-label="Satelitska mapa" onClick={() => setMapType('satellite')}>
+        <button type="button" className={mapType === 'satellite' ? 'active' : ''} aria-label="Satelitska mapa" aria-pressed={mapType === 'satellite'} onClick={() => setMapType('satellite')}>
           <Satellite size={17} />
         </button>
       </div>
@@ -1580,11 +1574,15 @@ export default function App() {
   const [userCoordinate, setUserCoordinate] = useState<Coordinate | null>(null);
   const [lastLocatedCoordinate, setLastLocatedCoordinate] = useState<Coordinate | null>(null);
   const [currentMahalas, setCurrentMahalas] = useState<Zone[]>([]);
-  const [enabledMahalaIds, setEnabledMahalaIds] = useState<Set<string>>(() => new Set());
+  const [mutedMahalaIds, setMutedMahalaIds] = useState<Set<string>>(() => new Set());
   const [currentMahalasSheetOpen, setCurrentMahalasSheetOpen] = useState(false);
   const feedRequestIdRef = useRef(0);
   const locationRequestIdRef = useRef(0);
   const mapZones = useMemo(() => [...sarajevoZones, ...zones], [sarajevoZones, zones]);
+  const enabledMahalaIds = useMemo(
+    () => new Set(currentMahalas.map((zone) => String(zone.id)).filter((id) => !mutedMahalaIds.has(id))),
+    [currentMahalas, mutedMahalaIds],
+  );
   const enabledFeedScopeIds = useMemo(
     () => getFeedScopeIds(currentMahalas, enabledMahalaIds),
     [currentMahalas, enabledMahalaIds],
@@ -1834,7 +1832,7 @@ export default function App() {
       setUserCoordinate(coordinate);
       setLastLocatedCoordinate(coordinate);
       setCurrentMahalas(nextCurrentMahalas);
-      setEnabledMahalaIds(new Set(nextCurrentMahalas.map((zone) => String(zone.id))));
+      setMutedMahalaIds(new Set());
       setCurrentMahalasSheetOpen(nextCurrentMahalas.length > 0);
       setMobileView('map');
       if (currentZone) {
@@ -1864,7 +1862,7 @@ export default function App() {
   }, [feedSort, loadFeedForMahalaIds, sarajevoZones, zones]);
 
   const toggleCurrentMahala = useCallback((id: string) => {
-    setEnabledMahalaIds((current) => {
+    setMutedMahalaIds((current) => {
       const next = new Set<string>(current);
 
       if (next.has(id)) {
@@ -1873,11 +1871,9 @@ export default function App() {
         next.add(id);
       }
 
-      void loadFeedForMahalaIds(getFeedScopeIds(currentMahalas, next), feedSort);
-
       return next;
     });
-  }, [currentMahalas, feedSort, loadFeedForMahalaIds]);
+  }, []);
 
   const changeFeedSort = useCallback((nextSort: FeedSort) => {
     setFeedSort(nextSort);
@@ -1929,20 +1925,6 @@ export default function App() {
     const nextCurrentMahalas = getCurrentMahalas(lastLocatedCoordinate, sarajevoZones, zones);
     const currentZone = nextCurrentMahalas.find((zone) => Number(zone.level) > 0) || nextCurrentMahalas[1] || nextCurrentMahalas[0];
     setCurrentMahalas(nextCurrentMahalas);
-    setEnabledMahalaIds((current) => {
-      if (current.size > 0) {
-        const nextIds = new Set(nextCurrentMahalas.map((zone) => String(zone.id)));
-        const merged = new Set<string>();
-        nextIds.forEach((id) => {
-          if (current.has(id)) {
-            merged.add(id);
-          }
-        });
-        return merged.size ? merged : nextIds;
-      }
-
-      return new Set(nextCurrentMahalas.map((zone) => String(zone.id)));
-    });
     if (currentZone) {
       setSelectedZone(currentZone);
     }

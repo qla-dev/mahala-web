@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Allotrope";
+  src: url("./assets/Fontspring-DEMO-allotrope-black.otf") format("opentype");
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+}
+
 :root {
   color-scheme: dark;
   background: #050508;
@@ -86,8 +94,6 @@ button {
   color: #7c3aed;
   background: transparent;
   font-size: 32px;
-  font-weight: 950;
-  letter-spacing: 0.02em;
   min-width: 0;
 }
 
@@ -99,6 +105,9 @@ button {
 
 .brand span {
   color: #7c3aed;
+  font-family: "Allotrope", system-ui, sans-serif;
+  font-weight: 900;
+  letter-spacing: 0.05em;
   line-height: 1;
   text-shadow: 0 0 18px rgba(124, 58, 237, 0.3);
 }
@@ -1486,6 +1495,15 @@ button {
   min-height: 360px;
   width: 100%;
   background: #08080d;
+}
+
+.map-light,
+.map-light .map-view {
+  background: #fafafa;
+}
+
+.map-light .leaflet-tile-pane {
+  filter: grayscale(1) brightness(1.04);
 }
 
 .map-dark .leaflet-tile-pane {
