@@ -867,7 +867,7 @@ function UserLottieMarker({ coordinate }: { coordinate: Coordinate | null }) {
       }
 
       if (!centeredRef.current) {
-        map.setView(position, MAP_LOCATE_ZOOM, { animate: false });
+        map.panTo(position, { animate: false });
         centeredRef.current = true;
       }
     } catch {
