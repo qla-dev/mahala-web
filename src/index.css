@@ -22,6 +22,10 @@
   --primary: #7c3aed;
   --accent: #8b5cf6;
   --accent-strong: #7c3aed;
+  --mahala-city: var(--accent);
+  --mahala-district: #2563eb;
+  --mahala-level-1: #187843;
+  --mahala-level-2: #f59e0b;
   --green: #10b981;
 }
 
@@ -749,7 +753,7 @@ a:where([href]) {
   width: 5px;
   height: 44px;
   border-radius: 999px;
-  background: rgba(139, 92, 246, 1);
+  background: var(--mahala-city);
 }
 
 .current-mahalas-sheet-row.inactive .current-mahalas-sheet-accent {
@@ -757,15 +761,15 @@ a:where([href]) {
 }
 
 .current-mahalas-sheet-accent.type-sarajevoArena {
-  background: rgba(37, 99, 235, 1);
+  background: var(--mahala-district);
 }
 
 .current-mahalas-sheet-accent.level-1 {
-  background: rgba(24, 120, 67, 1);
+  background: var(--mahala-level-1);
 }
 
 .current-mahalas-sheet-accent.level-2 {
-  background: rgba(245, 158, 11, 1);
+  background: var(--mahala-level-2);
 }
 
 .current-mahalas-sheet-main {
@@ -816,15 +820,15 @@ a:where([href]) {
 }
 
 .current-mahalas-sheet-row.type-sarajevoArena .current-mahalas-sheet-action.active {
-  background: rgb(37, 99, 235);
+  background: var(--mahala-district);
 }
 
 .current-mahalas-sheet-row.level-1 .current-mahalas-sheet-action.active {
-  background: rgb(24, 120, 67);
+  background: var(--mahala-level-1);
 }
 
 .current-mahalas-sheet-row.level-2 .current-mahalas-sheet-action.active {
-  background: rgb(245, 158, 11);
+  background: var(--mahala-level-2);
 }
 
 .current-mahalas-sheet-footer {
@@ -1517,8 +1521,7 @@ a:where([href]) {
   filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(1.1);
 }
 
-.map-zone-label.leaflet-tooltip,
-.map-current-zone-labels.leaflet-tooltip {
+.map-zone-label.leaflet-tooltip {
   border-color: rgba(255, 255, 255, 0.24);
   border-radius: 8px;
   background: rgba(17, 17, 24, 0.9);
@@ -1528,24 +1531,52 @@ a:where([href]) {
   font-weight: 700;
 }
 
-.map-light .map-zone-label.leaflet-tooltip,
-.map-light .map-current-zone-labels.leaflet-tooltip {
+.map-light .map-zone-label.leaflet-tooltip {
   border-color: #ddd6fe;
   background: rgba(255, 255, 255, 0.96);
   color: #4c1d95;
 }
 
-.map-city-label.leaflet-tooltip {
+.map-zone-city {
+  --map-zone-color: var(--mahala-city);
+}
+
+.map-zone-city.leaflet-tooltip {
   font-size: 14px;
 }
 
-.map-current-zone-labels .map-zone-label {
-  display: block;
-  padding-inline: 3px;
+.map-zone-district {
+  --map-zone-color: var(--mahala-district);
 }
 
-.map-current-zone-labels .map-zone-label.muted {
-  opacity: 0.65;
+.map-zone-level-1 {
+  --map-zone-color: var(--mahala-level-1);
+}
+
+.map-zone-level-2 {
+  --map-zone-color: var(--mahala-level-2);
+}
+
+.map-zone-label.leaflet-tooltip.is-active {
+  border-color: #f8fafc;
+  background: var(--map-zone-color);
+  color: #fff;
+  z-index: 70;
+}
+
+.map-zone-label.leaflet-tooltip.is-active.map-zone-level-1 {
+  z-index: 80;
+}
+
+.map-zone-label.leaflet-tooltip.is-active.map-zone-level-2 {
+  color: #201600;
+  z-index: 90;
+}
+
+.map-zone-label.leaflet-tooltip.is-muted {
+  border-color: rgba(203, 213, 225, 0.42);
+  background: #475569;
+  color: #e2e8f0;
 }
 
 .leaflet-control-attribution {

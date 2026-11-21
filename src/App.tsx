@@ -5,6 +5,7 @@ import SupportPage from './components/SupportPage';
 import {
   CircleMarker,
   MapContainer,
+  Pane,
   Polygon,
   TileLayer,
   Tooltip,
@@ -46,6 +47,8 @@ import PublicTopicsPanel from './components/PublicTopicsPanel';
 import TopicDetailPanel from './components/TopicDetail';
 import mahalaJumpLogo from './assets/mahalaJumpLogo.json';
 import { SARAJEVO_POLYGONS } from './data/sarajevoPolygons';
+import { loadMapRegions, mapCountries } from './data/mapCoverage';
+import type { MapArea } from './data/mapCoverage';
 import type { Post, PostReply, Topic } from './types';
 
 // @ts-ignore
@@ -89,11 +92,19 @@ type PageMeta = {
 };
 
 const DEFAULT_CENTER: [number, number] = [43.8563, 18.4131];
-const INITIAL_MAP_ZOOM = 12;
+const INITIAL_MAP_CENTER: [number, number] = [44.15, 17.79];
+const INITIAL_MAP_ZOOM = 7;
+const MAP_LOCATE_ZOOM = 10;
+const MAP_DETAIL_ZOOM = 15;
 const SARAJEVO_CITY_LABEL_MIN_ZOOM = 10;
 const SARAJEVO_DISTRICT_LABEL_MIN_ZOOM = 11;
 const LEVEL_1_MAHALA_MIN_ZOOM = 12.3;
 const LEVEL_2_MAHALA_MIN_ZOOM = 13.6;
+const MAP_BOUNDARY_LEVELS = [
+  { level: 0, tier: 'district', minZoom: SARAJEVO_DISTRICT_LABEL_MIN_ZOOM, zIndex: 400, fillOpacity: 0.46 },
+  { level: 1, tier: 'level-1', minZoom: LEVEL_1_MAHALA_MIN_ZOOM, zIndex: 410, fillOpacity: 0.48 },
+  { level: 2, tier: 'level-2', minZoom: LEVEL_2_MAHALA_MIN_ZOOM, zIndex: 420, fillOpacity: 0.42 },
+] as const;
 const MOBILE_QUERY = '(max-width: 920px)';
 const FEED_SORT_TABS = [
   { id: 'recent', label: 'Najnovije objave' },
@@ -426,7 +437,7 @@ function normalizeZone(value: unknown): Zone | null {
   return {
     id: String(zone.id),
     name: String(zone.name),
-    level: Number(zone.level) || 2,
+    level: Number(zone.level) === 1 ? 1 : 2,
     officialId: zone.officialId ? String(zone.officialId) : undefined,
     center: normalizeCoordinate(zone.center),
     coordinates,
@@ -546,6 +557,19 @@ function pointInPolygon(point: Coordinate, polygon: Coordinate[], holes: Coordin
   }
 
   return !holes.some((hole) => pointInRing(point, hole));
+}
+
+function getContainingMapArea(areas: MapArea[], coordinate: Coordinate) {
+  return areas.find(({ bounds: [south, west, north, east], polygons }) => {
+    if (coordinate.latitude < south || coordinate.latitude > north ||
+      coordinate.longitude < west || coordinate.longitude > east) {
+      return false;
+    }
+    return polygons.some(([ring, ...holes]) => {
+      const toCoordinates = (points: number[][]) => points.map(([latitude, longitude]) => ({ latitude, longitude }));
+      return pointInPolygon(coordinate, toCoordinates(ring), holes.map(toCoordinates));
+    });
+  });
 }
 
 function getCurrentMahalas(coordinate: Coordinate, sarajevoZones: Zone[], userZones: Zone[]) {
@@ -801,8 +825,8 @@ function MapCommandController({
       return;
     }
 
-    const zoom = command.type === 'near' ? 16 : 13;
-    map.setView([userCoordinate.latitude, userCoordinate.longitude], Math.max(map.getZoom(), zoom), { animate: true });
+    const zoom = command.type === 'near' ? MAP_DETAIL_ZOOM : MAP_LOCATE_ZOOM;
+    map.setView([userCoordinate.latitude, userCoordinate.longitude], zoom, { animate: true });
   }, [command, map, userCoordinate]);
 
   return null;
@@ -811,6 +835,7 @@ function MapCommandController({
 function UserLottieMarker({ coordinate }: { coordinate: Coordinate | null }) {
   const map = useMap();
   const markerRef = useRef<L.Marker | null>(null);
+  const centeredRef = useRef(false);
   const animationRef = useRef<ReturnType<typeof lottie.loadAnimation> | null>(null);
 
   useEffect(() => {
@@ -841,7 +866,10 @@ function UserLottieMarker({ coordinate }: { coordinate: Coordinate | null }) {
         markerRef.current.setLatLng(position);
       }
 
-      map.setView(position, Math.max(map.getZoom(), 14), { animate: false });
+      if (!centeredRef.current) {
+        map.setView(position, MAP_LOCATE_ZOOM, { animate: false });
+        centeredRef.current = true;
+      }
     } catch {
       markerRef.current?.remove();
       markerRef.current = null;
@@ -1383,13 +1411,110 @@ function TopicFeedScreen({
   );
 }
 
+function getMapLabelCenter(zone: Zone): L.LatLngExpression {
+  if (zone.id === SARAJEVO_MAHALA_ZONE.id) {
+    return DEFAULT_CENTER;
+  }
+  return zone.center ? [zone.center.latitude, zone.center.longitude] : L.latLngBounds(polygonPath(zone)).getCenter();
+}
+
+function placeCurrentMapLabels(map: L.Map, zoom: number, zones: Zone[], userCoordinate: Coordinate | null) {
+  const occupied: L.Bounds[] = [];
+  if (userCoordinate) {
+    const marker = map.project([userCoordinate.latitude, userCoordinate.longitude], zoom);
+    occupied.push(L.bounds(marker.subtract([22, 45]), marker.add([22, 8])));
+  }
+
+  const positions = new Map<string, L.LatLng>();
+  for (const zone of zones) {
+    const anchor = map.project(getMapLabelCenter(zone), zoom);
+    const halfWidth = (zone.name.length * 8 + 20) / 2;
+    const halfHeight = 16;
+    let position = anchor;
+    let labelBounds = L.bounds(position.subtract([halfWidth, halfHeight]), position.add([halfWidth, halfHeight]));
+    // Try alternate sides of the anchor, moving only when a current label or the location marker overlaps.
+    for (let step = 1; occupied.some((bounds) => bounds.overlaps(labelBounds)); step += 1) {
+      const offset = Math.ceil(step / 2) * (step % 2 ? -34 : 34);
+      position = anchor.add([0, offset]);
+      labelBounds = L.bounds(position.subtract([halfWidth, halfHeight]), position.add([halfWidth, halfHeight]));
+    }
+    occupied.push(labelBounds);
+    positions.set(zone.id, map.unproject(position, zoom));
+  }
+  return positions;
+}
+
+function mapZoneLabelClass(tier: string, active: boolean, muted: boolean) {
+  return `map-zone-label map-zone-${tier}${active ? ' is-active' : ''}${muted ? ' is-muted' : ''}`;
+}
+
+function MahalaMapCoverage({
+  coordinate,
+  inSarajevo,
+  mapType,
+}: {
+  coordinate: Coordinate | null;
+  inSarajevo: boolean;
+  mapType: MapType;
+}) {
+  const country = useMemo(() => coordinate && getContainingMapArea(mapCountries, coordinate), [coordinate]);
+  const [region, setRegion] = useState<MapArea | null>(null);
+
+  useEffect(() => {
+    setRegion(null);
+    if (!coordinate || !country || inSarajevo) {
+      return;
+    }
+
+    let cancelled = false;
+    void loadMapRegions(country.id).then((regions) => {
+      if (!cancelled) {
+        setRegion(getContainingMapArea(regions, coordinate) ?? null);
+      }
+    }).catch(() => {
+      // Keep the country outline available if its regional data fails to load.
+    });
+    return () => { cancelled = true; };
+  }, [coordinate, country, inSarajevo]);
+
+  return (
+    <Pane name="mahala-coverage" style={{ zIndex: 390 }}>
+      {mapCountries.map((area) => (
+        <Polygon
+          key={area.id}
+          positions={area.polygons as L.LatLngTuple[][][]}
+          interactive={false}
+          pathOptions={{
+            color: mapType === 'light' ? '#0f172a' : '#fff',
+            opacity: mapType === 'light' ? 0.78 : 0.82,
+            weight: 2,
+            fillColor: 'var(--mahala-city)',
+            fillOpacity: country?.id === area.id ? 0.22 : 0,
+          }}
+        />
+      ))}
+      {region && !inSarajevo ? (
+        <Polygon
+          key={region.id}
+          positions={region.polygons as L.LatLngTuple[][][]}
+          interactive={false}
+          pathOptions={{ color: 'var(--mahala-city)', weight: 3, fillOpacity: 0.2 }}
+        >
+          <Tooltip className={mapZoneLabelClass('city', true, false)} direction="center" opacity={1} permanent>
+            {region.name}
+          </Tooltip>
+        </Polygon>
+      ) : null}
+    </Pane>
+  );
+}
+
 function MahalaMapBoundaries({
   zones,
   selectedZone,
   userCoordinate,
   currentMahalas,
   mutedMahalaIds,
-  mapType,
   onZone,
 }: {
   zones: Zone[];
@@ -1397,7 +1522,6 @@ function MahalaMapBoundaries({
   userCoordinate: Coordinate | null;
   currentMahalas: Zone[];
   mutedMahalaIds: Set<string>;
-  mapType: MapType;
   onZone: (zone: Zone) => void;
 }) {
   const map = useMap();
@@ -1408,68 +1532,68 @@ function MahalaMapBoundaries({
 
   const currentMahalaIds = useMemo(() => new Set(currentMahalas.map((zone) => zone.id)), [currentMahalas]);
   const inSarajevo = currentMahalaIds.has(SARAJEVO_MAHALA_ZONE.id);
-  const groupCurrentLabels = userCoordinate !== null && zoom < LEVEL_2_MAHALA_MIN_ZOOM;
-  const showCityLabel = (inSarajevo && !groupCurrentLabels) || (!inSarajevo &&
-    zoom >= SARAJEVO_CITY_LABEL_MIN_ZOOM && zoom < SARAJEVO_DISTRICT_LABEL_MIN_ZOOM
+  const currentLabelPositions = useMemo(
+    () => placeCurrentMapLabels(map, zoom, currentMahalas, userCoordinate),
+    [map, zoom, currentMahalas, userCoordinate],
   );
+  const showCityLabel = inSarajevo || (zoom >= SARAJEVO_CITY_LABEL_MIN_ZOOM && zoom < SARAJEVO_DISTRICT_LABEL_MIN_ZOOM);
+  const cityMuted = inSarajevo && mutedMahalaIds.has(SARAJEVO_MAHALA_ZONE.id);
+  const cityLabelClass = mapZoneLabelClass('city', inSarajevo && !cityMuted, cityMuted);
 
   return (
     <>
-      {zones.map((zone) => {
-        const level = Number(zone.level);
-        const isDistrict = level === 0;
-        const levelMinZoom = level === 1 ? LEVEL_1_MAHALA_MIN_ZOOM : LEVEL_2_MAHALA_MIN_ZOOM;
-        const locationId = isDistrict ? `sarajevo-arena:${zone.id}` : zone.id;
-        const isCurrent = currentMahalaIds.has(locationId);
-        if (!isDistrict && !isCurrent && zoom < levelMinZoom) {
-          return null;
-        }
+      {MAP_BOUNDARY_LEVELS.map(({ level, tier, minZoom, zIndex, fillOpacity }) => (
+        <Pane key={tier} name={`mahala-${tier}`} style={{ zIndex }}>
+          {zones.filter((zone) => Number(zone.level) === level).map((zone) => {
+            const isDistrict = level === 0;
+            const locationId = isDistrict ? `sarajevo-arena:${zone.id}` : zone.id;
+            const isCurrent = currentMahalaIds.has(locationId);
+            if (isDistrict ? !inSarajevo && zoom < SARAJEVO_CITY_LABEL_MIN_ZOOM : !isCurrent && zoom < minZoom) {
+              return null;
+            }
 
-        const selected = selectedZone?.id === zone.id;
-        const muted = isCurrent && mutedMahalaIds.has(locationId);
-        const color = muted ? '#64748b' : isDistrict ? '#7c3aed' : level === 1 ? '#8b5cf6' : '#10b981';
-        const emphasized = selected || isCurrent;
-        const name = isDistrict ? getSarajevoArenaName(zone.name) : zone.name;
-        const showLabel = isCurrent
-          ? !groupCurrentLabels
-          : zoom >= (isDistrict ? SARAJEVO_DISTRICT_LABEL_MIN_ZOOM : levelMinZoom);
-        const labelPosition: [number, number] | undefined = zone.center
-          ? [zone.center.latitude, zone.center.longitude]
-          : undefined;
+            const muted = isCurrent && mutedMahalaIds.has(locationId);
+            const active = isCurrent && !muted;
+            const color = muted ? '#94a3b8' : `var(--mahala-${tier})`;
+            const labelClass = mapZoneLabelClass(tier, active, muted);
+            const emphasized = isCurrent || selectedZone?.id === zone.id;
 
-        return (
-          <Polygon
-            key={zone.id}
-            positions={[polygonPath(zone), ...(zone.holes || []).map((ring) =>
-              ring.map(({ latitude, longitude }): [number, number] => [latitude, longitude]),
-            )]}
-            pathOptions={{
-              color: selected && !muted ? (mapType === 'light' ? '#5b21b6' : '#f8fafc') : color,
-              fillColor: color,
-              fillOpacity: mapType === 'light' ? (emphasized ? 0.16 : 0.04) : (emphasized ? 0.4 : 0.16),
-              weight: emphasized ? 3 : 1.4,
-            }}
-            eventHandlers={{ click: () => onZone(zone) }}
-          >
-            {showLabel ? (
-              <Tooltip className="map-zone-label" direction="center" position={labelPosition} permanent>
-                {name}
-              </Tooltip>
-            ) : null}
-          </Polygon>
-        );
-      })}
+            return (
+              <Polygon
+                key={zone.id}
+                positions={[polygonPath(zone), ...(zone.holes || []).map((ring) =>
+                  ring.map(({ latitude, longitude }): [number, number] => [latitude, longitude]),
+                )]}
+                pathOptions={{
+                  color,
+                  opacity: emphasized ? 1 : 0.72,
+                  fillColor: color,
+                  fillOpacity: muted ? 0.38 : active ? fillOpacity : 0,
+                  weight: emphasized ? 3 : 2,
+                }}
+                eventHandlers={{ click: () => onZone(zone) }}
+              >
+                {isCurrent || zoom >= minZoom ? (
+                  <Tooltip
+                    key={labelClass}
+                    className={labelClass}
+                    direction="center"
+                    position={currentLabelPositions.get(locationId) ?? getMapLabelCenter(zone)}
+                    opacity={1}
+                    permanent
+                  >
+                    {isDistrict ? getSarajevoArenaName(zone.name) : zone.name}
+                  </Tooltip>
+                ) : null}
+              </Polygon>
+            );
+          })}
+        </Pane>
+      ))}
       {showCityLabel ? (
         <CircleMarker center={DEFAULT_CENTER} radius={0} interactive={false}>
-          <Tooltip className="map-zone-label map-city-label" direction="center" permanent>Sarajevo</Tooltip>
-        </CircleMarker>
-      ) : null}
-      {userCoordinate && groupCurrentLabels && currentMahalas.length > 0 ? (
-        <CircleMarker center={[userCoordinate.latitude, userCoordinate.longitude]} radius={0} interactive={false}>
-          <Tooltip className="map-current-zone-labels" direction="bottom" offset={[0, 24]} permanent>
-            {currentMahalas.map(({ id, name }) => (
-              <span key={id} className={mutedMahalaIds.has(id) ? 'map-zone-label muted' : 'map-zone-label'}>{name}</span>
-            ))}
+          <Tooltip key={cityLabelClass} className={cityLabelClass} direction="center" position={currentLabelPositions.get(SARAJEVO_MAHALA_ZONE.id)} opacity={1} permanent>
+            Sarajevo
           </Tooltip>
         </CircleMarker>
       ) : null}
@@ -1504,13 +1628,18 @@ function MahalaMap({
 
   return (
     <div className={`map-shell map-${mapType}`}>
-      <MapContainer center={DEFAULT_CENTER} zoom={INITIAL_MAP_ZOOM} minZoom={8} zoomSnap={0.25} className="map-view" zoomControl={false}>
+      <MapContainer center={INITIAL_MAP_CENTER} zoom={INITIAL_MAP_ZOOM} zoomSnap={0.25} className="map-view" zoomControl={false}>
         <TileLayer
           key={mapType}
           attribution={MAP_TILE_ATTRIBUTION[mapType]}
           url={MAP_TILESETS[mapType]}
         />
-        <MahalaMapBoundaries zones={zones} selectedZone={selectedZone} userCoordinate={userCoordinate} currentMahalas={currentMahalas} mutedMahalaIds={mutedMahalaIds} mapType={mapType} onZone={onZone} />
+        <MahalaMapCoverage
+          coordinate={userCoordinate}
+          inSarajevo={currentMahalas.some((zone) => zone.id === SARAJEVO_MAHALA_ZONE.id)}
+          mapType={mapType}
+        />
+        <MahalaMapBoundaries zones={zones} selectedZone={selectedZone} userCoordinate={userCoordinate} currentMahalas={currentMahalas} mutedMahalaIds={mutedMahalaIds} onZone={onZone} />
         <UserLottieMarker coordinate={userCoordinate} />
         <MapCommandController command={mapCommand} userCoordinate={userCoordinate} />
         <FitZone zone={selectedZone} />
@@ -1911,16 +2040,12 @@ export default function App() {
         longitude: position.coords.longitude,
       };
       const nextCurrentMahalas = getCurrentMahalas(coordinate, sarajevoZones, zones);
-      const currentZone = nextCurrentMahalas.find((zone) => Number(zone.level) > 0) || nextCurrentMahalas[0];
       setUserCoordinate(coordinate);
       setLastLocatedCoordinate(coordinate);
       setCurrentMahalas(nextCurrentMahalas);
       setMutedMahalaIds(new Set());
       setCurrentMahalasSheetOpen(nextCurrentMahalas.length > 0);
       setMobileView('map');
-      if (currentZone) {
-        setSelectedZone(currentZone);
-      }
       setLocationStatus('granted');
       void loadFeedForMahalaIds(getFeedScopeIds(nextCurrentMahalas), feedSort);
     };
@@ -2006,11 +2131,7 @@ export default function App() {
     }
 
     const nextCurrentMahalas = getCurrentMahalas(lastLocatedCoordinate, sarajevoZones, zones);
-    const currentZone = nextCurrentMahalas.find((zone) => Number(zone.level) > 0) || nextCurrentMahalas[1] || nextCurrentMahalas[0];
     setCurrentMahalas(nextCurrentMahalas);
-    if (currentZone) {
-      setSelectedZone(currentZone);
-    }
   }, [lastLocatedCoordinate, sarajevoZones, zones]);
 
   useEffect(() => {
