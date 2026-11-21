@@ -1366,7 +1366,7 @@ a:where([href]) {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   background: #15151a;
-  padding: 18px 64px 18px 16px;
+  padding: 16px 64px 18px 16px;
 }
 
 .reply-card.child {
@@ -1376,6 +1376,11 @@ a:where([href]) {
 .reply-empty-state {
   border-radius: 18px;
   background: transparent;
+}
+
+.reply-main > strong {
+  display: block;
+  line-height: 1;
 }
 
 .reply-main p {
