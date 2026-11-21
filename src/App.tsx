@@ -559,17 +559,22 @@ function pointInPolygon(point: Coordinate, polygon: Coordinate[], holes: Coordin
   return !holes.some((hole) => pointInRing(point, hole));
 }
 
-function getContainingMapArea(areas: MapArea[], coordinate: Coordinate) {
-  return areas.find(({ bounds: [south, west, north, east], polygons }) => {
-    if (coordinate.latitude < south || coordinate.latitude > north ||
-      coordinate.longitude < west || coordinate.longitude > east) {
-      return false;
-    }
-    return polygons.some(([ring, ...holes]) => {
-      const toCoordinates = (points: number[][]) => points.map(([latitude, longitude]) => ({ latitude, longitude }));
-      return pointInPolygon(coordinate, toCoordinates(ring), holes.map(toCoordinates));
-    });
+function mapAreaContains({ bounds: [south, west, north, east], polygons }: MapArea, coordinate: Coordinate) {
+  if (coordinate.latitude < south || coordinate.latitude > north ||
+    coordinate.longitude < west || coordinate.longitude > east) {
+    return false;
+  }
+  return polygons.some(([ring, ...holes]) => {
+    const contains = (points: number[][]) => pointInRing(
+      coordinate,
+      points.map(([latitude, longitude]) => ({ latitude, longitude })),
+    );
+    return contains(ring) && !holes.some(contains);
   });
+}
+
+function getContainingMapArea(areas: MapArea[], coordinate: Coordinate) {
+  return areas.find((area) => mapAreaContains(area, coordinate));
 }
 
 function getCurrentMahalas(coordinate: Coordinate, sarajevoZones: Zone[], userZones: Zone[]) {
@@ -1450,14 +1455,15 @@ function mapZoneLabelClass(tier: string, active: boolean, muted: boolean) {
 
 function MahalaMapCoverage({
   coordinate,
+  country,
   inSarajevo,
   mapType,
 }: {
   coordinate: Coordinate | null;
+  country: MapArea | undefined;
   inSarajevo: boolean;
   mapType: MapType;
 }) {
-  const country = useMemo(() => coordinate && getContainingMapArea(mapCountries, coordinate), [coordinate]);
   const [region, setRegion] = useState<MapArea | null>(null);
 
   useEffect(() => {
@@ -1479,7 +1485,7 @@ function MahalaMapCoverage({
 
   return (
     <Pane name="mahala-coverage" style={{ zIndex: 390 }}>
-      {mapCountries.map((area) => (
+      {(coordinate ? (country ? [country] : []) : mapCountries).map((area) => (
         <Polygon
           key={area.id}
           positions={area.polygons as L.LatLngTuple[][][]}
@@ -1511,6 +1517,7 @@ function MahalaMapCoverage({
 
 function MahalaMapBoundaries({
   zones,
+  showSarajevo,
   selectedZone,
   userCoordinate,
   currentMahalas,
@@ -1518,6 +1525,7 @@ function MahalaMapBoundaries({
   onZone,
 }: {
   zones: Zone[];
+  showSarajevo: boolean;
   selectedZone: Zone | null;
   userCoordinate: Coordinate | null;
   currentMahalas: Zone[];
@@ -1536,7 +1544,7 @@ function MahalaMapBoundaries({
     () => placeCurrentMapLabels(map, zoom, currentMahalas, userCoordinate),
     [map, zoom, currentMahalas, userCoordinate],
   );
-  const showCityLabel = inSarajevo || (zoom >= SARAJEVO_CITY_LABEL_MIN_ZOOM && zoom < SARAJEVO_DISTRICT_LABEL_MIN_ZOOM);
+  const showCityLabel = showSarajevo && (inSarajevo || (zoom >= SARAJEVO_CITY_LABEL_MIN_ZOOM && zoom < SARAJEVO_DISTRICT_LABEL_MIN_ZOOM));
   const cityMuted = inSarajevo && mutedMahalaIds.has(SARAJEVO_MAHALA_ZONE.id);
   const cityLabelClass = mapZoneLabelClass('city', inSarajevo && !cityMuted, cityMuted);
 
@@ -1619,6 +1627,27 @@ function MahalaMap({
 }) {
   const [mapType, setMapType] = useState<MapType>('light');
   const [mapCommand, setMapCommand] = useState<MapCommand>(null);
+  const inSarajevo = currentMahalas.some((zone) => zone.id === SARAJEVO_MAHALA_ZONE.id);
+  const country = useMemo(
+    () => userCoordinate ? getContainingMapArea(mapCountries, userCoordinate) : undefined,
+    [userCoordinate],
+  );
+  const showSarajevo = !userCoordinate || inSarajevo;
+  const visibleZones = useMemo(() => {
+    if (!userCoordinate) {
+      return zones;
+    }
+    const currentIds = new Set(currentMahalas.map((zone) => zone.id));
+    return zones.filter((zone) => {
+      if (zone.level === 0) {
+        return showSarajevo;
+      }
+      return currentIds.has(zone.id) || Boolean(country && (
+        (zone.center && mapAreaContains(country, zone.center)) ||
+        zone.coordinates.some((coordinate) => mapAreaContains(country, coordinate))
+      ));
+    });
+  }, [country, currentMahalas, showSarajevo, userCoordinate, zones]);
   const triggerLocate = (type: 'near' | 'far') => {
     if (!userCoordinate) {
       return;
@@ -1637,10 +1666,11 @@ function MahalaMap({
         />
         <MahalaMapCoverage
           coordinate={userCoordinate}
-          inSarajevo={currentMahalas.some((zone) => zone.id === SARAJEVO_MAHALA_ZONE.id)}
+          country={country}
+          inSarajevo={inSarajevo}
           mapType={mapType}
         />
-        <MahalaMapBoundaries zones={zones} selectedZone={selectedZone} userCoordinate={userCoordinate} currentMahalas={currentMahalas} mutedMahalaIds={mutedMahalaIds} onZone={onZone} />
+        <MahalaMapBoundaries zones={visibleZones} showSarajevo={showSarajevo} selectedZone={selectedZone} userCoordinate={userCoordinate} currentMahalas={currentMahalas} mutedMahalaIds={mutedMahalaIds} onZone={onZone} />
         <UserLottieMarker coordinate={userCoordinate} />
         <MapCommandController command={mapCommand} userCoordinate={userCoordinate} />
         <FitZone zone={selectedZone} />
