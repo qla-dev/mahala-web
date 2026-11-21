@@ -1500,7 +1500,7 @@ function MahalaMapCoverage({
           interactive={false}
           pathOptions={{ color: 'var(--mahala-city)', weight: 3, fillOpacity: 0.2 }}
         >
-          <Tooltip className={mapZoneLabelClass('city', true, false)} direction="center" opacity={1} permanent>
+          <Tooltip pane="tooltipPane" className={mapZoneLabelClass('city', true, false)} direction="center" opacity={1} permanent>
             {region.name}
           </Tooltip>
         </Polygon>
@@ -1576,6 +1576,7 @@ function MahalaMapBoundaries({
                 {isCurrent || zoom >= minZoom ? (
                   <Tooltip
                     key={labelClass}
+                    pane="tooltipPane"
                     className={labelClass}
                     direction="center"
                     position={currentLabelPositions.get(locationId) ?? getMapLabelCenter(zone)}
@@ -1592,7 +1593,7 @@ function MahalaMapBoundaries({
       ))}
       {showCityLabel ? (
         <CircleMarker center={DEFAULT_CENTER} radius={0} interactive={false}>
-          <Tooltip key={cityLabelClass} className={cityLabelClass} direction="center" position={currentLabelPositions.get(SARAJEVO_MAHALA_ZONE.id)} opacity={1} permanent>
+          <Tooltip key={cityLabelClass} pane="tooltipPane" className={cityLabelClass} direction="center" position={currentLabelPositions.get(SARAJEVO_MAHALA_ZONE.id)} opacity={1} permanent>
             Sarajevo
           </Tooltip>
         </CircleMarker>
