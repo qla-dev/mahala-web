@@ -92,7 +92,8 @@ type PageMeta = {
 };
 
 const DEFAULT_CENTER: [number, number] = [43.8563, 18.4131];
-const INITIAL_MAP_ZOOM = 9;
+const INITIAL_MAP_CENTER: [number, number] = [44.15, 17.79];
+const INITIAL_MAP_ZOOM = 8;
 const MAP_LOCATE_ZOOM = 10;
 const MAP_DETAIL_ZOOM = 15;
 const SARAJEVO_CITY_LABEL_MIN_ZOOM = 10;
@@ -1647,25 +1648,24 @@ function MahalaMap({
     setMapCommand({ id: Date.now(), type });
   };
 
-  if (!userCoordinate) {
-    return <div className={`map-shell map-${mapType}`} />;
-  }
+  const center: [number, number] = userCoordinate
+    ? [userCoordinate.latitude, userCoordinate.longitude]
+    : INITIAL_MAP_CENTER;
 
   return (
     <div className={`map-shell map-${mapType}`}>
-      <MapContainer center={[userCoordinate.latitude, userCoordinate.longitude]} zoom={INITIAL_MAP_ZOOM} zoomSnap={0.25} className="map-view" zoomControl={false}>
+      <MapContainer center={center} zoom={INITIAL_MAP_ZOOM} zoomSnap={0.25} className="map-view" zoomControl={false}>
         <TileLayer
           key={mapType}
           attribution={MAP_TILE_ATTRIBUTION[mapType]}
           url={MAP_TILESETS[mapType]}
         />
-        <MahalaMapCoverage
-          coordinate={userCoordinate}
-          country={country}
-          inSarajevo={inSarajevo}
-          mapType={mapType}
-        />
-        <MahalaMapBoundaries zones={visibleZones} showSarajevo={inSarajevo} selectedZone={selectedZone} userCoordinate={userCoordinate} currentMahalas={currentMahalas} mutedMahalaIds={mutedMahalaIds} onZone={onZone} />
+        {userCoordinate ? (
+          <>
+            <MahalaMapCoverage coordinate={userCoordinate} country={country} inSarajevo={inSarajevo} mapType={mapType} />
+            <MahalaMapBoundaries zones={visibleZones} showSarajevo={inSarajevo} selectedZone={selectedZone} userCoordinate={userCoordinate} currentMahalas={currentMahalas} mutedMahalaIds={mutedMahalaIds} onZone={onZone} />
+          </>
+        ) : null}
         <UserLottieMarker coordinate={userCoordinate} />
         <MapCommandController command={mapCommand} userCoordinate={userCoordinate} />
         <FitZone zone={selectedZone} />
@@ -1682,10 +1682,10 @@ function MahalaMap({
         </button>
       </div>
       <div className="map-controls map-controls-right" aria-label="Lokacija">
-        <button type="button" aria-label="Lociraj šire" onClick={() => triggerLocate('far')}>
+        <button type="button" disabled={!userCoordinate} aria-label="Lociraj šire" onClick={() => triggerLocate('far')}>
           <Search size={17} />
         </button>
-        <button type="button" aria-label="Lociraj bliže" onClick={() => triggerLocate('near')}>
+        <button type="button" disabled={!userCoordinate} aria-label="Lociraj bliže" onClick={() => triggerLocate('near')}>
           <Navigation size={17} />
         </button>
       </div>
