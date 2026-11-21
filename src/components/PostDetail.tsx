@@ -98,8 +98,8 @@ export default function PostDetail({
                   <strong>{reply.upvotes ?? Math.max(reply.votes, 0)}</strong>
                 </button>
                 <button type="button" className="reply-vote-badge" onClick={openDownloadGate}>
-                  <ChevronDown size={15} />
                   <strong>{reply.downvotes ?? Math.max(-reply.votes, 0)}</strong>
+                  <ChevronDown size={15} />
                 </button>
               </div>
             </article>
