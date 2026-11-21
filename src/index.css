@@ -95,7 +95,7 @@ a:where([href]) {
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
   color: #7c3aed;
   background: transparent;
   font-size: 32px;
@@ -106,6 +106,7 @@ a:where([href]) {
   display: block;
   height: 54px;
   width: 54px;
+  margin-inline-end: -12px;
 }
 
 .brand span {
@@ -115,6 +116,7 @@ a:where([href]) {
   letter-spacing: 0.05em;
   line-height: 1;
   text-shadow: 0 0 18px rgba(124, 58, 237, 0.3);
+  translate: 0 3px;
 }
 
 .legal-nav {
@@ -2191,10 +2193,6 @@ a:where([href]) {
 
   .brand span {
     font-size: 24px;
-  }
-
-  .brand {
-    gap: 8px;
   }
 
   .brand img {
