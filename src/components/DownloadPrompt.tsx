@@ -1,18 +1,15 @@
 import { Apple, Play, Smartphone } from 'lucide-react';
 
-const storeLinks = {
-  ios: 'https://apps.apple.com/',
-  android: 'https://play.google.com/store',
-};
+import { STORE_LINKS } from '../downloads';
 
 export function StoreButtons() {
   return (
     <div className="store-buttons">
-      <a className="store-button" href={storeLinks.ios} target="_blank" rel="noreferrer">
+      <a className="store-button" href={STORE_LINKS.ios} target="_blank" rel="noreferrer">
         <Apple size={15} />
         App Store
       </a>
-      <a className="store-button" href={storeLinks.android} target="_blank" rel="noreferrer">
+      <a className="store-button" href={STORE_LINKS.android} target="_blank" rel="noreferrer">
         <Play size={15} />
         Google Play
       </a>

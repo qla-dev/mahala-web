@@ -214,7 +214,8 @@ a:where([href]) {
   box-shadow: 0 22px 50px rgba(0, 0, 0, 0.42);
 }
 
-.header-menu button {
+.header-menu button,
+.header-menu a {
   min-height: 38px;
   border-radius: 11px;
   background: transparent;
@@ -225,8 +226,17 @@ a:where([href]) {
   font-weight: 900;
 }
 
+.header-menu a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
 .header-menu button.active,
-.header-menu button:hover {
+.header-menu button:hover,
+.header-menu a:hover,
+.header-menu a:focus-visible {
   background: rgba(124, 58, 237, 0.16);
   color: var(--text);
 }

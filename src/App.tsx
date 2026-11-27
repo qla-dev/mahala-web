@@ -21,8 +21,10 @@ import {
   ChevronLeft,
   ChevronUp,
   Download,
+  Facebook,
   Heart,
   Home,
+  Instagram,
   Apple,
   Map as MapIcon,
   Menu,
@@ -46,6 +48,7 @@ import PublicPostCard from './components/PublicPostCard';
 import PublicTopicsPanel from './components/PublicTopicsPanel';
 import TopicDetailPanel from './components/TopicDetail';
 import mahalaJumpLogo from './assets/mahalaJumpLogo.json';
+import { detectMobileStorePlatform, DOWNLOAD_PATH, STORE_LINKS } from './downloads';
 import { SARAJEVO_POLYGONS } from './data/sarajevoPolygons';
 import { loadMapRegions, mapCountries } from './data/mapCoverage';
 import type { MapArea } from './data/mapCoverage';
@@ -143,10 +146,6 @@ const SITE_NAME = 'MAHALA';
 const SITE_ORIGIN = 'https://mahala.app';
 const OG_IMAGE_PATH = '/mahala.svg';
 const MOBILE_STORE_BANNER_DISMISSED_KEY = 'mahala-mobile-store-banner-dismissed';
-const STORE_LINKS = {
-  ios: 'https://apps.apple.com/',
-  android: 'https://play.google.com/store',
-};
 const PAGE_META: Record<Page, PageMeta> = {
   app: {
     title: 'MAHALA - mapa i objave iz tvoje mahale',
@@ -909,28 +908,6 @@ function UserLottieMarker({ coordinate }: { coordinate: Coordinate | null }) {
   return null;
 }
 
-function detectMobileStorePlatform(): 'ios' | 'android' | null {
-  const ua = navigator.userAgent || '';
-  const platform = navigator.platform || '';
-  const uaDataMobile = Boolean((navigator as Navigator & { userAgentData?: { mobile?: boolean } }).userAgentData?.mobile);
-  const hasTouch = navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches;
-  const isiPadOS = platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-
-  if (!hasTouch && !uaDataMobile) {
-    return null;
-  }
-
-  if (/Android/i.test(ua)) {
-    return 'android';
-  }
-
-  if (/iPhone|iPad|iPod/i.test(ua) || isiPadOS) {
-    return 'ios';
-  }
-
-  return null;
-}
-
 function Header({
   page,
   onPage,
@@ -972,7 +949,7 @@ function Header({
     { page: 'cookies', label: 'Kolačići' },
   ];
   const storeBanner = storeBannerPlatform ? {
-    href: storeBannerPlatform === 'ios' ? STORE_LINKS.ios : STORE_LINKS.android,
+    href: STORE_LINKS[storeBannerPlatform],
     Icon: storeBannerPlatform === 'ios' ? Apple : Play,
     title: storeBannerPlatform === 'ios' ? 'App Store' : 'Google Play',
     subtitle: storeBannerPlatform === 'ios' ? 'Otvori MAHALA u App Store aplikaciji' : 'Otvori MAHALA u Google Play aplikaciji',
@@ -1027,7 +1004,7 @@ function Header({
               <Menu size={21} />
             </button>
             {menuOpen ? (
-              <nav className="header-menu" aria-label="Pravne stranice">
+              <nav className="header-menu" aria-label="Glavni meni">
                 {menuItems.map((item) => (
                   <button
                     key={item.page}
@@ -1041,6 +1018,13 @@ function Header({
                     {item.label}
                   </button>
                 ))}
+                <a href={DOWNLOAD_PATH}><Download size={15} aria-hidden="true" /> Preuzmi aplikaciju</a>
+                <a href="https://www.facebook.com/1407452595791559/" target="_blank" rel="noreferrer">
+                  <Facebook size={15} aria-hidden="true" /> Facebook
+                </a>
+                <a href="https://www.instagram.com/mahala__app/" target="_blank" rel="noreferrer">
+                  <Instagram size={15} aria-hidden="true" /> Instagram
+                </a>
               </nav>
             ) : null}
           </div>
