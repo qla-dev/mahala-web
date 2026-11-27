@@ -916,6 +916,27 @@ a:where([href]) {
   box-shadow: 0 12px 34px rgba(124, 58, 237, 0.32);
 }
 
+.feed-location-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  column-gap: 8px;
+}
+
+.feed-location-actions button:disabled {
+  opacity: 0.65;
+}
+
+.feed-location-link {
+  width: min(240px, 100%);
+  margin-top: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px;
+  text-align: center;
+}
+
 .post-card {
   display: grid;
   width: 100%;

@@ -1165,8 +1165,8 @@ function FeedPanel({
   onLoadMore,
   onRefresh,
   locationStatus,
+  isInstagramBrowser,
   onLocate,
-  onOpenLocationSettings,
 }: {
   activeSort: FeedSort;
   onSort: (sort: FeedSort) => void;
@@ -1180,13 +1180,23 @@ function FeedPanel({
   onLoadMore: () => void;
   onRefresh: () => void;
   locationStatus: LocationStatus;
+  isInstagramBrowser: boolean;
   onLocate: () => void;
-  onOpenLocationSettings: () => void;
 }) {
   const listRef = useRef<HTMLDivElement | null>(null);
   const pullStartYRef = useRef<number | null>(null);
   const loadMoreRequestedRef = useRef(false);
   const needsLocation = locationStatus !== 'granted';
+  const [linkStatus, setLinkStatus] = useState<'idle' | 'copied' | 'manual'>('idle');
+
+  const copyBrowserLink = async () => {
+    try {
+      await navigator.clipboard.writeText(SITE_ORIGIN);
+      setLinkStatus('copied');
+    } catch {
+      setLinkStatus('manual');
+    }
+  };
   useEffect(() => {
     if (!loadingMore) {
       loadMoreRequestedRef.current = false;
@@ -1239,6 +1249,16 @@ function FeedPanel({
     }
   };
   const locationCopy = (() => {
+    if (isInstagramBrowser) {
+      return {
+        title: locationStatus === 'denied' || locationStatus === 'unsupported'
+          ? 'Instagram je blokirao lokaciju'
+          : 'Lokacija u Instagramu',
+        body: 'Ako Instagram ne prikaže upit za lokaciju, u meniju ⋯ izaberi „Otvori u pregledniku” ili kopiraj link u Safari ili Chrome.',
+        action: locationStatus === 'error' ? 'Pokušaj ponovo' : 'Dopusti lokaciju',
+      };
+    }
+
     if (locationStatus === 'unsupported') {
       return {
         title: 'Lokacija nije dostupna',
@@ -1252,8 +1272,8 @@ function FeedPanel({
     if (locationStatus === 'denied') {
       return {
         title: 'Lokacija je blokirana',
-        body: 'U Safari postavkama dozvoli lokaciju za ovu stranicu, pa se vrati na MAHALA web.',
-        action: 'Otvori Safari postavke',
+        body: 'U dozvolama preglednika dopusti lokaciju za mahala.app, pa pokušaj ponovo.',
+        action: 'Pokušaj ponovo',
       };
     }
 
@@ -1286,9 +1306,26 @@ function FeedPanel({
           <LottieBox className="feed-empty-lottie" />
           <h2>{locationCopy.title}</h2>
           <p>{locationCopy.body}</p>
-          <button type="button" onClick={locationStatus === 'denied' ? onOpenLocationSettings : onLocate}>
-            {locationCopy.action}
-          </button>
+          <div className="feed-location-actions">
+            {(!isInstagramBrowser || (locationStatus !== 'denied' && locationStatus !== 'unsupported')) && (
+              <button type="button" onClick={onLocate} disabled={locationStatus === 'locating'}>
+                {locationStatus === 'locating' ? 'Lociranje…' : locationCopy.action}
+              </button>
+            )}
+            {isInstagramBrowser && (
+              <button type="button" onClick={copyBrowserLink}>Kopiraj link</button>
+            )}
+          </div>
+          {linkStatus === 'copied' && <p role="status">Link je kopiran.</p>}
+          {linkStatus === 'manual' && (
+            <input
+              className="feed-location-link"
+              aria-label="Link za otvaranje u pregledniku"
+              value={SITE_ORIGIN}
+              readOnly
+              onFocus={(event) => event.currentTarget.select()}
+            />
+          )}
         </div>
       ) : (
         <>
@@ -1774,6 +1811,7 @@ function BottomNav({
 
 export default function App() {
   const [page, setPage] = useState<Page>(() => getPageFromPath());
+  const isInstagramBrowser = /\bInstagram\b/i.test(navigator.userAgent);
   const [mobileView, setMobileView] = useState<MobileView>('feed');
   const [zones, setZones] = useState<Zone[]>([]);
   const sarajevoZones = useMemo(
@@ -2039,8 +2077,15 @@ export default function App() {
     const requestId = locationRequestIdRef.current + 1;
     locationRequestIdRef.current = requestId;
     setLocationStatus('locating');
+    // The embedded browser can leave the permission request pending.
+    const instagramTimeout = isInstagramBrowser ? window.setTimeout(() => {
+      if (requestId === locationRequestIdRef.current) {
+        setLocationStatus('error');
+      }
+    }, 12_000) : undefined;
 
     const handlePosition = (position: GeolocationPosition) => {
+      window.clearTimeout(instagramTimeout);
       if (requestId !== locationRequestIdRef.current) {
         return;
       }
@@ -2062,6 +2107,7 @@ export default function App() {
     };
 
     const handleError = (error: GeolocationPositionError) => {
+      window.clearTimeout(instagramTimeout);
       if (requestId !== locationRequestIdRef.current) {
         return;
       }
@@ -2076,9 +2122,10 @@ export default function App() {
         timeout: 12_000,
       });
     } catch {
+      window.clearTimeout(instagramTimeout);
       setLocationStatus('error');
     }
-  }, [feedSort, loadFeedForMahalaIds, sarajevoZones, zones]);
+  }, [feedSort, isInstagramBrowser, loadFeedForMahalaIds, sarajevoZones, zones]);
 
   const toggleCurrentMahala = useCallback((id: string) => {
     setMutedMahalaIds((current) => {
@@ -2118,23 +2165,14 @@ export default function App() {
     });
   }, [activeFeedMahalaIds, feedHasMore, feedLoading, feedLoadingMore, feedPage, feedRefreshing, feedSort, loadFeedForMahalaIds]);
 
-  const openLocationSettings = useCallback(() => {
-    const candidates = [
-      'App-Prefs:SAFARI',
-      'prefs:root=SAFARI',
-    ];
-    const target = candidates[0];
-    window.location.href = target;
-  }, []);
-
   useEffect(() => {
-    if (sarajevoZones.length === 0 || locationStatus !== 'idle') {
+    if (isInstagramBrowser || sarajevoZones.length === 0 || locationStatus !== 'idle') {
       return undefined;
     }
 
     const timeout = window.setTimeout(requestLocation, 0);
     return () => window.clearTimeout(timeout);
-  }, [locationStatus, requestLocation, sarajevoZones.length]);
+  }, [isInstagramBrowser, locationStatus, requestLocation, sarajevoZones.length]);
 
   useEffect(() => {
     if (!lastLocatedCoordinate) {
@@ -2175,8 +2213,17 @@ export default function App() {
       return;
     }
 
-    requestLocation(true);
-  }, [currentMahalas.length, locationStatus, requestLocation]);
+    if (isInstagramBrowser && locationStatus !== 'granted') {
+      setSelectedPost(null);
+      setSelectedTopicId(null);
+      setMobileView('feed');
+      if (locationStatus === 'denied' || locationStatus === 'unsupported' || locationStatus === 'locating') {
+        return;
+      }
+    }
+
+    requestLocation(!isInstagramBrowser);
+  }, [currentMahalas.length, isInstagramBrowser, locationStatus, requestLocation]);
   const openTopicScreen = useCallback((topicId: string) => {
     setSelectedPost(null);
     setSelectedTopicId(topicId);
@@ -2225,8 +2272,8 @@ export default function App() {
       onLoadMore={loadMoreFeed}
       onRefresh={refreshFeed}
       locationStatus={locationStatus}
+      isInstagramBrowser={isInstagramBrowser}
       onLocate={handleLocationPress}
-      onOpenLocationSettings={openLocationSettings}
     />
   );
 
