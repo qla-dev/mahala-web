@@ -1774,7 +1774,7 @@ function BottomNav({
 
 export default function App() {
   const [page, setPage] = useState<Page>(() => getPageFromPath());
-  const [mobileView, setMobileView] = useState<MobileView>('map');
+  const [mobileView, setMobileView] = useState<MobileView>('feed');
   const [zones, setZones] = useState<Zone[]>([]);
   const sarajevoZones = useMemo(
     () => (SARAJEVO_POLYGONS as Zone[]).map((zone) => ({ ...zone, level: 0 })),
@@ -2024,7 +2024,7 @@ export default function App() {
     }
   }, [feedSort, mapZones, normalizeTopicPayload]);
 
-  const requestLocation = useCallback(() => {
+  const requestLocation = useCallback((showCurrentMahalas = false) => {
     const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
     if (!window.isSecureContext && !isLocalhost) {
       setLocationStatus('unsupported');
@@ -2054,8 +2054,9 @@ export default function App() {
       setLastLocatedCoordinate(coordinate);
       setCurrentMahalas(nextCurrentMahalas);
       setMutedMahalaIds(new Set());
-      setCurrentMahalasSheetOpen(nextCurrentMahalas.length > 0);
-      setMobileView('map');
+      if (showCurrentMahalas && nextCurrentMahalas.length > 0) {
+        setCurrentMahalasSheetOpen(true);
+      }
       setLocationStatus('granted');
       void loadFeedForMahalaIds(getFeedScopeIds(nextCurrentMahalas), feedSort);
     };
@@ -2174,7 +2175,7 @@ export default function App() {
       return;
     }
 
-    requestLocation();
+    requestLocation(true);
   }, [currentMahalas.length, locationStatus, requestLocation]);
   const openTopicScreen = useCallback((topicId: string) => {
     setSelectedPost(null);
@@ -2224,7 +2225,7 @@ export default function App() {
       onLoadMore={loadMoreFeed}
       onRefresh={refreshFeed}
       locationStatus={locationStatus}
-      onLocate={requestLocation}
+      onLocate={handleLocationPress}
       onOpenLocationSettings={openLocationSettings}
     />
   );
