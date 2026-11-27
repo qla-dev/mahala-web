@@ -1043,15 +1043,31 @@ a:where([href]) {
 .public-post-meta {
   position: relative;
   z-index: 2;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
   margin-bottom: 10px;
+  margin-right: -56px;
   color: rgba(255, 255, 255, 0.72);
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 1px;
   text-transform: uppercase;
+}
+
+:is(.public-post-meta, .detail-hero-meta) {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 1.4vw, 8px);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+:is(.public-post-meta, .detail-hero-meta) > :not(.post-meta-label) {
+  flex-shrink: 0;
+}
+
+.post-meta-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .public-post-topic {
@@ -1244,10 +1260,6 @@ a:where([href]) {
 }
 
 .detail-hero-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
   margin-bottom: 12px;
   margin-right: -46px;
   color: rgba(255, 255, 255, 0.72);
@@ -2561,5 +2573,11 @@ a:where([href]) {
 
   .app-header .store-button svg {
     color: var(--text);
+  }
+}
+
+@media (max-width: 360px) {
+  :is(.public-post-meta, .detail-hero-meta) {
+    letter-spacing: 0.03em;
   }
 }

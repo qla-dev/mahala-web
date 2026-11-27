@@ -70,9 +70,9 @@ export default function PublicPostCard({
           />
         ) : null}
       <span className="public-post-meta">
-        <span>{post.mahala}</span>
+        <span className="post-meta-label" title={post.mahala}>{post.mahala}</span>
         <span>-</span>
-        <span>{topic}</span>
+        <span className="post-meta-label" title={topic}>{topic}</span>
         <span>-</span>
         <span>{post.timeAgo}</span>
       </span>
